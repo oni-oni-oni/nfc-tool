@@ -235,13 +235,44 @@
         } catch (e) { tbd.innerHTML = "取得失敗"; }
     }
 
+// 道具登録関数（タグIDの重複チェック付き）
     async function registerTool() {
-        const name = document.getElementById('regName').value, tag = document.getElementById('regTag').value;
-        if(!name || !tag) return alert("入力不足");
-        await callGas({ action: "addToolMaster", sId: session.sId, name, tag });
-        alert("登録完了");
-        document.getElementById('regName').value = ""; document.getElementById('regTag').value = "";
-        loadToolMaster();
+        const name = document.getElementById('regName').value;
+        const tag = document.getElementById('regTag').value;
+
+        if(!name || !tag) return alert("道具名とタグIDを入力してください");
+
+        // --- 重複チェック開始 ---
+        try {
+            // 現在の道具名簿を一度取得してチェックする
+            const res = await callGas({ action: "fetchToolMaster", sId: session.sId });
+            const tools = await res.json();
+            
+            // tools の各行の [1]（タグID）に、今回入力した tag が含まれているか確認
+            const isDuplicate = tools.some(t => t[1] === tag);
+            
+            if (isDuplicate) {
+                const existingTool = tools.find(t => t[1] === tag);
+                return alert("エラー：このタグIDは既に登録されています。\n登録済みの道具名: " + existingTool[0]);
+            }
+        } catch (e) {
+            console.error("重複チェック中にエラーが発生しました", e);
+            // 通信エラーなどでチェックできない場合は安全のために中断するか、そのまま進めるか判断が必要ですが、
+            // ここでは一旦停止して警告を出すようにします。
+            return alert("名簿の確認に失敗しました。通信環境を確認してください。");
+        }
+        // --- 重複チェック終了 ---
+
+        // 重複がなければ登録実行
+        try {
+            await callGas({ action: "addToolMaster", sId: session.sId, name: name, tag: tag });
+            alert("登録が完了しました！");
+            document.getElementById('regName').value = "";
+            document.getElementById('regTag').value = "";
+            loadToolMaster(); // リスト更新
+        } catch (e) {
+            alert("登録に失敗しました");
+        }
     }
 
     // 道具削除関数
