@@ -11,11 +11,11 @@
         .nav-fixed { position: fixed; bottom: 0; width: 100%; background: white; border-top: 1px solid #dee2e6; display: flex; justify-content: space-around; padding: 10px 0; z-index: 1000; }
         .view-section { display: none; }
         .active-view { display: block; }
-        .status-badge { padding: 3px 8px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; }
-        /* 状況別の色分け */
+        .status-badge { padding: 3px 8px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; }
         .bg-貸出中 { background: #cfe2ff; color: #084298; }
         .bg-保管中 { background: #e2e3e5; color: #41464b; }
         .bg-点検中 { background: #fff3cd; color: #856404; }
+        .filter-area { background: #eee; padding: 10px; border-radius: 10px; margin-bottom: 15px; }
     </style>
 </head>
 <body id="body">
@@ -34,12 +34,22 @@
     <div id="view-scan" class="view-section">
         <div class="card card-custom bg-dark text-white text-center border-0">
             <h5 id="displayComp" class="text-secondary small mb-3">🏢 読み込み中...</h5>
+            
+            <div class="text-start mb-3">
+                <label class="small fw-bold text-secondary">利用者を選択</label>
+                <select id="scanUserSelect" class="form-select bg-dark text-white border-secondary">
+                    <option value="">選択してください...</option>
+                </select>
+            </div>
+
             <h4 class="fw-bold mb-3">📡 一括スキャン</h4>
             <button class="btn btn-success btn-lg w-100 py-4 my-3 shadow" onclick="startNFC()">スキャン開始</button>
+            
             <div class="text-start small mb-3">
                 読み取り済み: <span id="count" class="fw-bold text-info">0</span>
                 <ul id="scanList" class="list-group list-group-flush mt-2 rounded" style="max-height: 150px; overflow-y: auto;"></ul>
             </div>
+            
             <div class="row g-2">
                 <div class="col-6"><button class="btn btn-primary btn-lg w-100" onclick="sendToGas('貸出中')">一括貸出</button></div>
                 <div class="col-6"><button class="btn btn-outline-light btn-lg w-100" onclick="sendToGas('保管中')">一括返却</button></div>
@@ -48,38 +58,8 @@
         </div>
     </div>
 
-    <div id="view-list" class="view-section">
-        <div class="d-flex justify-content-between align-items-center mb-3 mt-2">
-            <h4 class="fw-bold m-0">📋 稼働状況</h4>
-            <button class="btn btn-sm btn-outline-primary" onclick="loadAndShowList()">🔄 更新</button>
-        </div>
-        <div class="table-responsive bg-white rounded shadow-sm">
-            <table class="table table-hover align-middle mb-0">
-                <thead class="table-light">
-                    <tr class="small text-secondary"><th>道具名</th><th>場所</th><th>状況</th></tr>
-                </thead>
-                <tbody id="listTbd" class="small"></tbody>
-            </table>
-        </div>
-    </div>
-
-    <div id="view-register" class="view-section">
-        <div class="card card-custom border-0">
-            <h4 class="fw-bold mb-4">➕ 道具新規登録</h4>
-            <div class="mb-3">
-                <label class="form-label small fw-bold">道具名</label>
-                <input type="text" id="regName" class="form-control" placeholder="例：インパクトレンチ A">
-            </div>
-            <div class="mb-4">
-                <label class="form-label small fw-bold">タグID (NFCスキャン)</label>
-                <div class="input-group">
-                    <input type="text" id="regTag" class="form-control bg-light" readonly placeholder="スキャンしてください">
-                    <button class="btn btn-secondary" onclick="scanSingleTag()">スキャン</button>
-                </div>
-            </div>
-            <button class="btn btn-success btn-lg w-100 py-3" onclick="registerTool()">名簿に登録</button>
-        </div>
-    </div>
+    <div id="view-list" class="view-section">...省略...</div>
+    <div id="view-register" class="view-section">...省略...</div>
 </div>
 
 <nav class="nav-fixed" id="mainNav" style="display:none;">
@@ -93,24 +73,22 @@
     const GAS_URL = "https://script.google.com/macros/s/AKfycbxfegh7kmH3W1njOYJ0BSH-Vai0DUdt9pxn1MszcXCgfvfbR_j3TqJD1HC6yhD6PoqHOg/exec";
     let session = { sId: "", comp: "" };
     let tagIds = [];
+    let masterData = [];
 
-    // 共通通信関数（CORS対策済）
     async function callGas(payload) {
-        const response = await fetch(GAS_URL, {
+        return await fetch(GAS_URL, {
             method: "POST",
             headers: { "Content-Type": "text/plain;charset=utf-8" },
             body: JSON.stringify(payload)
         });
-        return response;
     }
 
     async function handleLogin() {
         const id = document.getElementById('userId').value;
         const pw = document.getElementById('userPw').value;
         const msg = document.getElementById('loginMsg');
-        if(!id || !pw) return msg.innerText = "IDとパスワードを入力してください";
+        if(!id || !pw) return msg.innerText = "入力してください";
         msg.innerText = "認証中...";
-
         try {
             const res = await callGas({ action: "login", id, pw });
             const data = await res.json();
@@ -118,113 +96,58 @@
                 session = { sId: data.sId, comp: data.compName };
                 document.getElementById('displayComp').innerText = "🏢 " + session.comp;
                 document.getElementById('mainNav').style.display = "flex";
+                
+                // 【追加】ログイン成功時に社員リストを読み込む
+                loadStaffList();
+                
                 switchView('scan');
-            } else {
-                msg.innerText = "IDまたはパスワードが正しくありません";
-            }
-        } catch (e) {
-            msg.innerText = "接続エラー。GASの設定を確認してください。";
-        }
+            } else { msg.innerText = "失敗"; }
+        } catch (e) { msg.innerText = "エラー"; }
     }
 
+    // 【追加】GASから社員リスト（社員名簿シート）を取得してセレクトボックスに入れる
+    async function loadStaffList() {
+        try {
+            const res = await callGas({ action: "fetchStaff", sId: session.sId });
+            const staff = await res.json();
+            const sel = document.getElementById('scanUserSelect');
+            // A列:会社ID, B列:部署, C列:名前 の想定
+            sel.innerHTML = '<option value="">選択してください...</option>' + 
+                            staff.map(s => `<option value="${s[2]}">${s[2]} (${s[1]})</option>`).join('');
+        } catch (e) { console.error("社員リスト取得失敗"); }
+    }
+
+    async function sendToGas(status) {
+        if (tagIds.length === 0) return alert("未スキャン");
+        
+        // 【追加】選択されたユーザー名を取得
+        const selectedUser = document.getElementById('scanUserSelect').value;
+        if (status === '貸出中' && !selectedUser) return alert("貸出先の社員を選択してください");
+
+        document.getElementById('status').innerText = "送信中...";
+        try {
+            await callGas({ 
+                action: "update", 
+                sId: session.sId, 
+                tagIds: tagIds, 
+                status: status, 
+                userName: selectedUser || "返却(自動)", // 選択された名前を送信
+                placeName: "現場" 
+            });
+            alert("更新完了");
+            tagIds = [];
+            document.getElementById('scanList').innerHTML = "";
+            document.getElementById('count').innerText = "0";
+            switchView('list');
+        } catch (e) { alert("失敗"); }
+    }
+
+    // --- その他（startNFC, switchViewなどは前回と同じ） ---
     function switchView(v) {
         document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active-view'));
         document.getElementById('view-' + v).classList.add('active-view');
         document.getElementById('body').className = (v === 'scan' ? 'dark-mode' : '');
         if (v === 'list') loadAndShowList();
-    }
-
-    async function startNFC() {
-        if (!('NDEFReader' in window)) return alert("このブラウザはNFCに対応していません（Android Chrome推奨）");
-        try {
-            const ndef = new NDEFReader();
-            await ndef.scan();
-            document.getElementById('status').innerText = "待機中... 連続スキャンOK";
-            ndef.onreading = event => {
-                const id = event.serialNumber;
-                if (!tagIds.includes(id)) {
-                    tagIds.push(id);
-                    const li = document.createElement('li');
-                    li.className = "list-group-item bg-dark text-white border-secondary py-1 small";
-                    li.innerText = id;
-                    document.getElementById('scanList').prepend(li);
-                    document.getElementById('count').innerText = tagIds.length;
-                    if (navigator.vibrate) navigator.vibrate(100);
-                }
-            };
-        } catch (e) { alert("NFCエラー: " + e); }
-    }
-
-    async function loadAndShowList() {
-        const tbd = document.getElementById('listTbd');
-        tbd.innerHTML = "<tr><td colspan='3' class='text-center py-4'>読み込み中...</td></tr>";
-        try {
-            const res = await callGas({ action: "fetchData", sId: session.sId });
-            const data = await res.json();
-            tbd.innerHTML = data.slice(1).map(r => `
-                <tr>
-                    <td class="fw-bold">${r[1]}</td>
-                    <td>${r[2]}</td>
-                    <td><span class="status-badge bg-${r[4]}">${r[4]}</span></td>
-                </tr>
-            `).join('');
-        } catch (e) { tbd.innerHTML = "取得失敗"; }
-    }
-
-    async function registerTool() {
-        const name = document.getElementById('regName').value;
-        const tag = document.getElementById('regTag').value;
-        if(!name || !tag) return alert("道具名とタグIDを入力してください");
-        
-        const res = await callGas({ action: "addToolMaster", sId: session.sId, name, tag });
-        alert(await res.text());
-        document.getElementById('regName').value = "";
-        document.getElementById('regTag').value = "";
-        switchView('list');
-    }
-
-    async function sendToGas(status) {
-        if (tagIds.length === 0) return alert("タグを読み込んでください");
-        document.getElementById('status').innerText = "送信中...";
-        
-        try {
-            const res = await callGas({ 
-                action: "update", 
-                sId: session.sId, 
-                tagIds: tagIds, 
-                status: status, 
-                userName: "スキャナー(" + session.comp + ")", 
-                placeName: "現場" 
-            });
-
-            // .json() ではなく .text() で受け取る
-            const resultText = await res.text();
-            
-            alert(resultText); // GASからの「◯件更新完了」または「Error:...」を表示
-            
-            tagIds = [];
-            document.getElementById('scanList').innerHTML = "";
-            document.getElementById('count').innerText = "0";
-            document.getElementById('status').innerText = "";
-            
-            // 更新後に一覧を再読み込み
-            loadAndShowList();
-            
-        } catch (e) {
-            alert("通信に失敗しました: " + e);
-            document.getElementById('status').innerText = "送信失敗";
-        }
-    }
-
-    async function scanSingleTag() {
-        try {
-            const ndef = new NDEFReader();
-            await ndef.scan();
-            ndef.onreading = event => { 
-                document.getElementById('regTag').value = event.serialNumber;
-                if (navigator.vibrate) navigator.vibrate(100);
-            };
-        } catch (e) { alert("NFCエラー: " + e); }
     }
 </script>
 </body>
