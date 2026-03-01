@@ -10,11 +10,17 @@
         .scan-card { background: #1e1e1e; border-radius: 15px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
         .list-group-item { background: #2c2c2c; color: white; border: 1px solid #3d3d3d; font-family: monospace; }
         .status-msg { min-height: 1.5em; }
+        .company-badge { font-size: 0.8rem; background: #333; padding: 5px 10px; border-radius: 20px; }
     </style>
 </head>
 <body>
     <div class="container scan-card text-center">
-        <h3 class="mb-4">📡 高速一括スキャナー</h3>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <span class="company-badge text-secondary" id="displayComp">読み込み中...</span>
+            <span class="badge bg-outline-secondary border">汎用スキャナー</span>
+        </div>
+        
+        <h3 class="mb-4">📡 高速一括スキャン</h3>
         
         <button id="btnScan" class="btn btn-success btn-lg w-100 py-4 mb-3" onclick="startNFC()">
             スキャン開始
@@ -28,30 +34,42 @@
 
         <div class="row g-2 mt-4" id="actionButtons" style="display:none;">
             <div class="col-6">
-                <button class="btn btn-primary btn-lg w-100" onclick="sendToGas('貸出中')">一括貸出</button>
+                <button class="btn btn-primary btn-lg w-100 py-3" onclick="sendToGas('貸出中')">一括貸出</button>
             </div>
             <div class="col-6">
-                <button class="btn btn-outline-light btn-lg w-100" onclick="sendToGas('保管中')">一括返却</button>
+                <button class="btn btn-outline-light btn-lg w-100 py-3" onclick="sendToGas('保管中')">一括返却</button>
             </div>
         </div>
     </div>
 
     <script>
         let tagIds = [];
-        // 提供いただいた情報を反映
+        
+        // --- 汎用化の肝：URLパラメータの取得 ---
+        const urlParams = new URLSearchParams(window.location.search);
+        const SHEET_ID = urlParams.get('sId');      // URLの sId= を読み取る
+        const COMPANY_NAME = urlParams.get('comp') || "ゲストユーザー"; 
+        
+        // あなたの共通GAS URL（これは窓口なので1つで固定）
         const GAS_URL = "https://script.google.com/macros/s/AKfycbxfegh7kmH3W1njOYJ0BSH-Vai0DUdt9pxn1MszcXCgfvfbR_j3TqJD1HC6yhD6PoqHOg/exec";
-        const SHEET_ID = "1_z9SacqBnkhj-VeD5EQhJHiAj38l2H-M60j_ikgGYbA";
+
+        // 起動時に会社名を表示
+        window.onload = () => {
+            document.getElementById('displayComp').innerText = "🏢 " + COMPANY_NAME;
+            if (!SHEET_ID) {
+                alert("エラー：URLにシートIDが含まれていません。ログイン画面から開き直してください。");
+            }
+        };
 
         async function startNFC() {
             try {
                 if (!('NDEFReader' in window)) {
-                    alert("このブラウザはNFCに対応していません。Android Chromeを使用してください。");
+                    alert("Android Chromeで開いてください。");
                     return;
                 }
                 const ndef = new NDEFReader();
                 await ndef.scan();
-                
-                document.getElementById('status').innerText = "読み取り待機中... 連続でかざしてください";
+                document.getElementById('status').innerText = "読み取り待機中... 連続スキャンOK";
                 document.getElementById('status').style.color = "#0dcaf0";
 
                 ndef.onreading = event => {
@@ -72,42 +90,39 @@
             const count = document.getElementById('count');
             const li = document.createElement('li');
             li.className = "list-group-item d-flex justify-content-between align-items-center";
-            li.innerHTML = `<span>${id}</span> <span class="badge bg-success">OK</span>`;
+            li.innerHTML = `<span>${id}</span> <span class="badge bg-success">検知</span>`;
             list.prepend(li);
             count.innerText = tagIds.length;
             document.getElementById('actionButtons').style.display = "flex";
         }
 
         async function sendToGas(statusType) {
+            if (!SHEET_ID) return alert("シートIDが不明です");
+            
             const btns = document.querySelectorAll('#actionButtons button');
             btns.forEach(b => b.disabled = true);
-            const statusLabel = document.getElementById('status');
-            statusLabel.innerText = "GASへ送信中...";
+            document.getElementById('status').innerText = "送信中...";
 
             const payload = {
                 tagIds: tagIds,
                 sId: SHEET_ID,
                 status: statusType,
-                userName: "一括スキャナー",
+                userName: "スキャナー(" + COMPANY_NAME + ")",
                 placeName: "現場"
             };
 
             try {
-                // GASへの送信（CORS回避のため mode: 'no-cors' は使わず、GAS側の doPost で対応）
                 await fetch(GAS_URL, {
                     method: "POST",
-                    mode: "no-cors", // GASへのPOSTの基本設定
+                    mode: "no-cors",
                     body: JSON.stringify(payload)
                 });
-                
-                // no-cors の場合レスポンスの中身は見れないため、送信完了として扱う
-                alert("送信命令を出しました。\n反映まで数秒かかります。");
+                alert("送信完了！スプレッドシートを確認してください。");
                 tagIds = [];
                 location.reload(); 
             } catch (e) {
-                alert("送信エラー: " + e);
+                alert("送信失敗: " + e);
                 btns.forEach(b => b.disabled = false);
-                statusLabel.innerText = "エラーが発生しました";
             }
         }
     </script>
