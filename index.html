@@ -1,137 +1,155 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NFC高速スキャナー</title>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>道具管理 Pro</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background-color: #121212; color: white; padding: 20px; font-family: sans-serif; }
-        .scan-card { background: #1e1e1e; border-radius: 15px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
-        .list-group-item { background: #2c2c2c; color: white; border: 1px solid #3d3d3d; font-family: monospace; }
-        .status-msg { min-height: 1.5em; }
-        .company-badge { font-size: 0.8rem; background: #333; padding: 5px 10px; border-radius: 20px; }
+        body { background-color: #f8f9fa; padding-bottom: 70px; }
+        .dark-mode { background-color: #121212; color: white; }
+        .card-custom { border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); padding: 20px; margin-top: 10px; }
+        .nav-fixed { position: fixed; bottom: 0; width: 100%; background: white; border-top: 1px solid #dee2e6; display: flex; justify-content: space-around; padding: 10px 0; z-index: 1000; }
+        .view-section { display: none; }
+        .active-view { display: block; }
+        .status-badge { padding: 3px 8px; border-radius: 20px; font-size: 0.8rem; }
+        .bg-貸出中 { background: #cfe2ff; color: #084298; }
+        .bg-保管中 { background: #e9ecef; color: #495057; }
     </style>
 </head>
-<body>
-    <div class="container scan-card text-center">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <span class="company-badge text-secondary" id="displayComp">読み込み中...</span>
-            <span class="badge bg-outline-secondary border">汎用スキャナー</span>
-        </div>
-        
-        <h3 class="mb-4">📡 高速一括スキャン</h3>
-        
-        <button id="btnScan" class="btn btn-success btn-lg w-100 py-4 mb-3" onclick="startNFC()">
-            スキャン開始
-        </button>
-        <p id="status" class="small text-secondary status-msg">ボタンを押してタグにかざしてください</p>
+<body id="body">
 
-        <div class="mt-4 text-start">
-            <label class="small fw-bold">スキャン済みタグ (<span id="count">0</span>)</label>
-            <ul id="scanList" class="list-group mt-2"></ul>
+<div class="container" id="app">
+    <div id="view-login" class="view-section active-view mt-5">
+        <div class="card card-custom text-center">
+            <h3>🔑 ログイン</h3>
+            <input type="text" id="userId" class="form-control my-3" placeholder="ユーザーID">
+            <input type="password" id="userPw" class="form-control mb-4" placeholder="パスワード">
+            <button class="btn btn-primary w-100 py-3" onclick="handleLogin()">ログイン</button>
+            <p id="loginMsg" class="text-danger mt-3 small"></p>
         </div>
+    </div>
 
-        <div class="row g-2 mt-4" id="actionButtons" style="display:none;">
-            <div class="col-6">
-                <button class="btn btn-primary btn-lg w-100 py-3" onclick="sendToGas('貸出中')">一括貸出</button>
+    <div id="view-scan" class="view-section">
+        <div class="card card-custom bg-dark text-white text-center">
+            <h5 id="displayComp" class="text-secondary small mb-3"></h5>
+            <h4>📡 一括スキャン</h4>
+            <button class="btn btn-success btn-lg w-100 py-4 my-3" onclick="startNFC()">スキャン開始</button>
+            <div class="text-start small mb-3">
+                読み取り済み: <span id="count">0</span>
+                <ul id="scanList" class="list-group list-group-flush mt-2" style="max-height: 150px; overflow-y: auto;"></ul>
             </div>
-            <div class="col-6">
-                <button class="btn btn-outline-light btn-lg w-100 py-3" onclick="sendToGas('保管中')">一括返却</button>
+            <div class="row g-2">
+                <div class="col-6"><button class="btn btn-primary w-100" onclick="sendToGas('貸出中')">一括貸出</button></div>
+                <div class="col-6"><button class="btn btn-outline-light w-100" onclick="sendToGas('保管中')">一括返却</button></div>
             </div>
         </div>
     </div>
 
-    <script>
-        let tagIds = [];
-        
-        // --- 汎用化の肝：URLパラメータの取得 ---
-        const urlParams = new URLSearchParams(window.location.search);
-        const SHEET_ID = urlParams.get('sId');      // URLの sId= を読み取る
-        const COMPANY_NAME = urlParams.get('comp') || "ゲストユーザー"; 
-        
-        // あなたの共通GAS URL（これは窓口なので1つで固定）
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbxfegh7kmH3W1njOYJ0BSH-Vai0DUdt9pxn1MszcXCgfvfbR_j3TqJD1HC6yhD6PoqHOg/exec";
+    <div id="view-list" class="view-section">
+        <h4 class="mb-3">📋 稼働状況</h4>
+        <button class="btn btn-sm btn-outline-primary mb-3" onclick="loadAndShowList()">🔄 更新</button>
+        <div class="table-responsive bg-white rounded shadow-sm">
+            <table class="table table-sm small">
+                <thead class="table-light"><tr><th>道具名</th><th>場所</th><th>状況</th></tr></thead>
+                <tbody id="listTbd"></tbody>
+            </table>
+        </div>
+    </div>
 
-        // 起動時に会社名を表示
-        window.onload = () => {
-            document.getElementById('displayComp').innerText = "🏢 " + COMPANY_NAME;
-            if (!SHEET_ID) {
-                alert("エラー：URLにシートIDが含まれていません。ログイン画面から開き直してください。");
+    <div id="view-register" class="view-section">
+        <div class="card card-custom">
+            <h4>➕ 道具新規登録</h4>
+            <label class="small mt-2">道具名</label>
+            <input type="text" id="regName" class="form-control mb-3">
+            <label class="small">タグID (スキャンして入力)</label>
+            <div class="input-group mb-4">
+                <input type="text" id="regTag" class="form-control">
+                <button class="btn btn-outline-secondary" onclick="scanSingleTag()">スキャン</button>
+            </div>
+            <button class="btn btn-success w-100 py-3" onclick="registerTool()">名簿に登録</button>
+        </div>
+    </div>
+</div>
+
+<nav class="nav-fixed" id="mainNav" style="display:none;">
+    <a href="#" class="text-decoration-none text-center small" onclick="switchView('scan')">📡<br>スキャン</a>
+    <a href="#" class="text-decoration-none text-center small" onclick="switchView('list')">📋<br>一覧</a>
+    <a href="#" class="text-decoration-none text-center small" onclick="switchView('register')">➕<br>登録</a>
+    <a href="#" class="text-decoration-none text-center small" onclick="location.reload()">🚪<br>ログアウト</a>
+</nav>
+
+<script>
+    const GAS_URL = "https://script.google.com/macros/s/（あなたのGASデプロイID）/exec";
+    let session = { sId: "", comp: "" };
+    let tagIds = [];
+
+    async function handleLogin() {
+        const id = document.getElementById('userId').value;
+        const pw = document.getElementById('userPw').value;
+        const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action:"login", id, pw }) });
+        const data = await res.json();
+        if (data.success) {
+            session = { sId: data.sId, comp: data.compName };
+            document.getElementById('displayComp').innerText = "🏢 " + session.comp;
+            document.getElementById('mainNav').style.display = "flex";
+            switchView('scan');
+        } else {
+            document.getElementById('loginMsg').innerText = "認証エラー";
+        }
+    }
+
+    function switchView(v) {
+        document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active-view'));
+        document.getElementById('view-' + v).classList.add('active-view');
+        document.getElementById('body').className = (v === 'scan' ? 'dark-mode' : '');
+        if (v === 'list') loadAndShowList();
+    }
+
+    async function startNFC() {
+        const ndef = new NDEFReader();
+        await ndef.scan();
+        ndef.onreading = event => {
+            const id = event.serialNumber;
+            if (!tagIds.includes(id)) {
+                tagIds.push(id);
+                const li = document.createElement('li');
+                li.className = "list-group-item bg-dark text-white border-secondary py-1 small";
+                li.innerText = id;
+                document.getElementById('scanList').prepend(li);
+                document.getElementById('count').innerText = tagIds.length;
             }
         };
+    }
 
-        async function startNFC() {
-            try {
-                if (!('NDEFReader' in window)) {
-                    alert("Android Chromeで開いてください。");
-                    return;
-                }
-                const ndef = new NDEFReader();
-                await ndef.scan();
-                document.getElementById('status').innerText = "読み取り待機中... 連続スキャンOK";
-                document.getElementById('status').style.color = "#0dcaf0";
+    async function loadAndShowList() {
+        const tbd = document.getElementById('listTbd');
+        tbd.innerHTML = "<tr><td colspan='3' class='text-center'>読み込み中...</td></tr>";
+        const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action:"fetchData", sId: session.sId }) });
+        const data = await res.json();
+        tbd.innerHTML = data.slice(1).map(r => `<tr><td>${r[1]}</td><td>${r[2]}</td><td><span class="status-badge bg-${r[4]}">${r[4]}</span></td></tr>`).join('');
+    }
 
-                ndef.onreading = event => {
-                    const id = event.serialNumber;
-                    if (!tagIds.includes(id)) {
-                        tagIds.push(id);
-                        updateList(id);
-                        if (navigator.vibrate) navigator.vibrate(100);
-                    }
-                };
-            } catch (e) {
-                alert("NFCエラー: " + e);
-            }
-        }
+    async function registerTool() {
+        const name = document.getElementById('regName').value;
+        const tag = document.getElementById('regTag').value;
+        const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action:"addToolMaster", sId: session.sId, name, tag }) });
+        alert(await res.text());
+        switchView('list');
+    }
 
-        function updateList(id) {
-            const list = document.getElementById('scanList');
-            const count = document.getElementById('count');
-            const li = document.createElement('li');
-            li.className = "list-group-item d-flex justify-content-between align-items-center";
-            li.innerHTML = `<span>${id}</span> <span class="badge bg-success">検知</span>`;
-            list.prepend(li);
-            count.innerText = tagIds.length;
-            document.getElementById('actionButtons').style.display = "flex";
-        }
+    async function sendToGas(status) {
+        await fetch(GAS_URL, { method: "POST", mode: "no-cors", body: JSON.stringify({ action:"update", sId: session.sId, tagIds, status, userName: "スキャナー", placeName: "現場" }) });
+        alert("送信しました");
+        tagIds = [];
+        document.getElementById('scanList').innerHTML = "";
+        document.getElementById('count').innerText = "0";
+    }
 
-async function sendToGas(statusType) {
-            if (!SHEET_ID) return alert("シートIDが不明です");
-            
-            const btns = document.querySelectorAll('#actionButtons button');
-            btns.forEach(b => b.disabled = true);
-            document.getElementById('status').innerText = "送信中...";
-
-            const payload = {
-                tagIds: tagIds,
-                sId: SHEET_ID,
-                status: statusType,
-                userName: "スキャナー(" + COMPANY_NAME + ")",
-                placeName: "現場"
-            };
-
-            try {
-                await fetch(GAS_URL, {
-                    method: "POST",
-                    mode: "no-cors",
-                    body: JSON.stringify(payload)
-                });
-                
-                // --- 送信完了後、元のGAS画面に自動で戻る処理 ---
-                alert("送信完了！元の画面に戻ります。");
-                
-                // あなたのGASのURL（/exec まで）を指定してください
-                const GAS_RETURN_URL = "https://script.google.com/macros/s/AKfycbxfegh7kmH3W1njOYJ0BSH-Vai0DUdt9pxn1MszcXCgfvfbR_j3TqJD1HC6yhD6PoqHOg/exec";
-                
-                // パラメータを維持して戻る
-                window.location.href = `${GAS_RETURN_URL}?page=index&sheetId=${SHEET_ID}&comp=${encodeURIComponent(COMPANY_NAME)}`;
-                
-            } catch (e) {
-                alert("送信失敗: " + e);
-                btns.forEach(b => b.disabled = false);
-            }
-        }
-    </script>
+    async function scanSingleTag() {
+        const ndef = new NDEFReader();
+        await ndef.scan();
+        ndef.onreading = event => { document.getElementById('regTag').value = event.serialNumber; };
+    }
+</script>
 </body>
 </html>
