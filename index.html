@@ -101,9 +101,45 @@
     </div>
 </div>
 
+<div class="container" id="app">
+    <div id="view-staff" class="view-section">
+        <div class="card card-custom border-0">
+            <h4 class="fw-bold mb-4">👤 社員登録</h4>
+            <div class="mb-3">
+                <label class="form-label small fw-bold">部署名</label>
+                <input type="text" id="staffDept" class="form-control" placeholder="例：工事部">
+            </div>
+            <div class="mb-4">
+                <label class="form-label small fw-bold">氏名</label>
+                <input type="text" id="staffName" class="form-control" placeholder="例：山田 太郎">
+            </div>
+            <button class="btn btn-primary btn-lg w-100 py-3" onclick="registerStaff()">社員を登録</button>
+        </div>
+    </div>
+
+    <div id="view-register" class="view-section">
+        <div class="card card-custom border-0">
+            <h4 class="fw-bold mb-4">➕ 道具新規登録</h4>
+            <div class="mb-3">
+                <label class="form-label small fw-bold">道具名</label>
+                <input type="text" id="regName" class="form-control" placeholder="例：インパクトレンチ A">
+            </div>
+            <div class="mb-4">
+                <label class="form-label small fw-bold">タグID (NFCスキャン)</label>
+                <div class="input-group">
+                    <input type="text" id="regTag" class="form-control bg-light" readonly placeholder="スキャンしてください">
+                    <button class="btn btn-secondary" onclick="scanSingleTag()">スキャン</button>
+                </div>
+            </div>
+            <button class="btn btn-success btn-lg w-100 py-3" onclick="registerTool()">名簿に登録</button>
+        </div>
+    </div>
+</div>
+
 <nav class="nav-fixed" id="mainNav" style="display:none;">
     <a href="javascript:void(0)" class="text-decoration-none text-center small text-dark" onclick="switchView('scan')">📡<br>スキャン</a>
     <a href="javascript:void(0)" class="text-decoration-none text-center small text-dark" onclick="switchView('list')">📋<br>一覧</a>
+    <a href="javascript:void(0)" class="text-decoration-none text-center small text-dark" onclick="switchView('staff')">👤<br>社員</a>
     <a href="javascript:void(0)" class="text-decoration-none text-center small text-dark" onclick="switchView('register')">➕<br>登録</a>
     <a href="javascript:void(0)" class="text-decoration-none text-center small text-danger" onclick="location.reload()">🚪<br>終了</a>
 </nav>
@@ -258,6 +294,31 @@
             await ndef.scan();
             ndef.onreading = event => { document.getElementById('regTag').value = event.serialNumber; if (navigator.vibrate) navigator.vibrate(100); };
         } catch (e) { alert("NFCエラー"); }
+    }
+
+    // 社員登録用関数（新設）
+    async function registerStaff() {
+        const dept = document.getElementById('staffDept').value;
+        const name = document.getElementById('staffName').value;
+        if(!dept || !name) return alert("部署と名前を入力してください");
+        
+        document.getElementById('status').innerText = "登録中...";
+        try {
+            await callGas({ 
+                action: "addMyStaff", 
+                sId: session.sId, 
+                dept: dept, 
+                name: name,
+                cCode: session.comp // 会社コードも送る
+            });
+            alert("社員を登録しました");
+            document.getElementById('staffDept').value = "";
+            document.getElementById('staffName').value = "";
+            loadStaffList(); // スキャン用のリストを更新
+            switchView('scan'); // スキャン画面に戻る
+        } catch (e) {
+            alert("登録失敗");
+        }
     }
 </script>
 </body>
