@@ -6,9 +6,10 @@
     <title>NFC高速スキャナー</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background-color: #121212; color: white; padding: 20px; }
+        body { background-color: #121212; color: white; padding: 20px; font-family: sans-serif; }
         .scan-card { background: #1e1e1e; border-radius: 15px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
-        .list-group-item { background: #2c2c2c; color: white; border: 1px solid #3d3d3d; }
+        .list-group-item { background: #2c2c2c; color: white; border: 1px solid #3d3d3d; font-family: monospace; }
+        .status-msg { min-height: 1.5em; }
     </style>
 </head>
 <body>
@@ -18,29 +19,40 @@
         <button id="btnScan" class="btn btn-success btn-lg w-100 py-4 mb-3" onclick="startNFC()">
             スキャン開始
         </button>
-        <p id="status" class="small text-secondary">ボタンを押してタグにかざしてください</p>
+        <p id="status" class="small text-secondary status-msg">ボタンを押してタグにかざしてください</p>
 
         <div class="mt-4 text-start">
-            <label class="small fw-bold">スキャン済みリスト (<span id="count">0</span>)</label>
+            <label class="small fw-bold">スキャン済みタグ (<span id="count">0</span>)</label>
             <ul id="scanList" class="list-group mt-2"></ul>
         </div>
 
-        <button id="btnSubmit" class="btn btn-primary btn-lg w-100 mt-4" style="display:none;" onclick="sendToGas()">
-            GASへ一括送信
-        </button>
+        <div class="row g-2 mt-4" id="actionButtons" style="display:none;">
+            <div class="col-6">
+                <button class="btn btn-primary btn-lg w-100" onclick="sendToGas('貸出中')">一括貸出</button>
+            </div>
+            <div class="col-6">
+                <button class="btn btn-outline-light btn-lg w-100" onclick="sendToGas('保管中')">一括返却</button>
+            </div>
+        </div>
     </div>
 
     <script>
         let tagIds = [];
-        // ★ここにあなたのGASのデプロイURLを貼り付けてください
-        const GAS_URL = "https://script.google.com/macros/s/XXXXX/exec";
+        // 提供いただいた情報を反映
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbxfegh7kmH3W1njOYJ0BSH-Vai0DUdt9pxn1MszcXCgfvfbR_j3TqJD1HC6yhD6PoqHOg/exec";
+        const SHEET_ID = "1_z9SacqBnkhj-VeD5EQhJHiAj38l2H-M60j_ikgGYbA";
 
         async function startNFC() {
             try {
+                if (!('NDEFReader' in window)) {
+                    alert("このブラウザはNFCに対応していません。Android Chromeを使用してください。");
+                    return;
+                }
                 const ndef = new NDEFReader();
                 await ndef.scan();
+                
                 document.getElementById('status').innerText = "読み取り待機中... 連続でかざしてください";
-                document.getElementById('status').classList.replace('text-secondary', 'text-info');
+                document.getElementById('status').style.color = "#0dcaf0";
 
                 ndef.onreading = event => {
                     const id = event.serialNumber;
@@ -60,37 +72,42 @@
             const count = document.getElementById('count');
             const li = document.createElement('li');
             li.className = "list-group-item d-flex justify-content-between align-items-center";
-            li.innerHTML = `<span>${id}</span> <span class="badge bg-primary rounded-pill">New</span>`;
-            list.prepend(li); // 新しいものを上に
+            li.innerHTML = `<span>${id}</span> <span class="badge bg-success">OK</span>`;
+            list.prepend(li);
             count.innerText = tagIds.length;
-            document.getElementById('btnSubmit').style.display = "block";
+            document.getElementById('actionButtons').style.display = "flex";
         }
 
-        async function sendToGas() {
-            const btn = document.getElementById('btnSubmit');
-            btn.disabled = true;
-            btn.innerText = "送信中...";
+        async function sendToGas(statusType) {
+            const btns = document.querySelectorAll('#actionButtons button');
+            btns.forEach(b => b.disabled = true);
+            const statusLabel = document.getElementById('status');
+            statusLabel.innerText = "GASへ送信中...";
 
-            // 今回はシンプルにIDリストだけ飛ばす例
             const payload = {
                 tagIds: tagIds,
-                sId: "あなたのスプレッドシートID", // ここも埋めておくと楽です
-                status: "貸出中"
+                sId: SHEET_ID,
+                status: statusType,
+                userName: "一括スキャナー",
+                placeName: "現場"
             };
 
             try {
-                const response = await fetch(GAS_URL, {
+                // GASへの送信（CORS回避のため mode: 'no-cors' は使わず、GAS側の doPost で対応）
+                await fetch(GAS_URL, {
                     method: "POST",
+                    mode: "no-cors", // GASへのPOSTの基本設定
                     body: JSON.stringify(payload)
                 });
-                const result = await response.text();
-                alert("送信完了: " + result);
+                
+                // no-cors の場合レスポンスの中身は見れないため、送信完了として扱う
+                alert("送信命令を出しました。\n反映まで数秒かかります。");
                 tagIds = [];
-                location.reload(); // 完了したらリセット
+                location.reload(); 
             } catch (e) {
                 alert("送信エラー: " + e);
-                btn.disabled = false;
-                btn.innerText = "再試行";
+                btns.forEach(b => b.disabled = false);
+                statusLabel.innerText = "エラーが発生しました";
             }
         }
     </script>
