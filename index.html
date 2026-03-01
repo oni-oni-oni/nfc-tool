@@ -165,19 +165,33 @@
         if (v === 'register') loadToolMaster();
     }
 
+    // 社員リストの読み込み（A:会社ID[0], B:部署[1], C:名前[2]）
     async function loadStaffList() {
         const tbd = document.getElementById('staffListTbd');
         if(tbd) tbd.innerHTML = "<tr><td colspan='3' class='text-center small text-muted'>読み込み中...</td></tr>";
         try {
             const res = await callGas({ action: "fetchStaff", sId: session.sId });
             const staff = await res.json();
+            
+            // スキャン画面のドロップダウンを更新
             const sel = document.getElementById('scanUserSelect');
             sel.innerHTML = '<option value="">選択してください...</option>' + 
-                            staff.map(s => `<option value="${s[2]}">${s[2]} (${s[1]})</option>`).join('');
+                            staff.map(s => `<option value="${s[2]}">${s[2]} (${s[1] || '部署なし'})</option>`).join('');
+
+            // 社員管理画面の一覧を更新
             if(tbd) {
-                tbd.innerHTML = staff.map(s => `<tr><td>${s[1]}</td><td class="fw-bold">${s[2]}</td><td class="text-end"><button class="btn btn-outline-danger btn-sm" onclick="deleteStaff('${s[2]}')">削除</button></td></tr>`).join('');
+                tbd.innerHTML = staff.map(s => `
+                    <tr>
+                        <td>${s[1] || ""}</td>
+                        <td class="fw-bold">${s[2] || ""}</td>
+                        <td class="text-end">
+                            <button class="btn btn-outline-danger btn-sm" style="font-size: 0.6rem;" 
+                                onclick="deleteStaff('${s[2]}')">削除</button>
+                        </td>
+                    </tr>
+                `).join('');
             }
-        } catch (e) { console.error("社員リスト失敗"); }
+        } catch (e) { console.error("社員リスト読み込み失敗"); }
     }
 
     async function registerStaff() {
