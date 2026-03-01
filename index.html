@@ -96,7 +96,7 @@
             document.getElementById('actionButtons').style.display = "flex";
         }
 
-        async function sendToGas(statusType) {
+async function sendToGas(statusType) {
             if (!SHEET_ID) return alert("シートIDが不明です");
             
             const btns = document.querySelectorAll('#actionButtons button');
@@ -117,9 +117,16 @@
                     mode: "no-cors",
                     body: JSON.stringify(payload)
                 });
-                alert("送信完了！スプレッドシートを確認してください。");
-                tagIds = [];
-                location.reload(); 
+                
+                // --- 送信完了後、元のGAS画面に自動で戻る処理 ---
+                alert("送信完了！元の画面に戻ります。");
+                
+                // あなたのGASのURL（/exec まで）を指定してください
+                const GAS_RETURN_URL = "https://script.google.com/macros/s/AKfycbxfegh7kmH3W1njOYJ0BSH-Vai0DUdt9pxn1MszcXCgfvfbR_j3TqJD1HC6yhD6PoqHOg/exec";
+                
+                // パラメータを維持して戻る
+                window.location.href = `${GAS_RETURN_URL}?page=index&sheetId=${SHEET_ID}&comp=${encodeURIComponent(COMPANY_NAME)}`;
+                
             } catch (e) {
                 alert("送信失敗: " + e);
                 btns.forEach(b => b.disabled = false);
