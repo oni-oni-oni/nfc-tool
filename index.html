@@ -186,19 +186,34 @@
     async function sendToGas(status) {
         if (tagIds.length === 0) return alert("タグを読み込んでください");
         document.getElementById('status').innerText = "送信中...";
-        await callGas({ 
-            action: "update", 
-            sId: session.sId, 
-            tagIds: tagIds, 
-            status: status, 
-            userName: "スキャナー(" + session.comp + ")", 
-            placeName: "現場" 
-        });
-        alert("更新完了！");
-        tagIds = [];
-        document.getElementById('scanList').innerHTML = "";
-        document.getElementById('count').innerText = "0";
-        document.getElementById('status').innerText = "";
+        
+        try {
+            const res = await callGas({ 
+                action: "update", 
+                sId: session.sId, 
+                tagIds: tagIds, 
+                status: status, 
+                userName: "スキャナー(" + session.comp + ")", 
+                placeName: "現場" 
+            });
+
+            // .json() ではなく .text() で受け取る
+            const resultText = await res.text();
+            
+            alert(resultText); // GASからの「◯件更新完了」または「Error:...」を表示
+            
+            tagIds = [];
+            document.getElementById('scanList').innerHTML = "";
+            document.getElementById('count').innerText = "0";
+            document.getElementById('status').innerText = "";
+            
+            // 更新後に一覧を再読み込み
+            loadAndShowList();
+            
+        } catch (e) {
+            alert("通信に失敗しました: " + e);
+            document.getElementById('status').innerText = "送信失敗";
+        }
     }
 
     async function scanSingleTag() {
