@@ -161,7 +161,7 @@
 
 <script>
     const GAS_URL = "https://script.google.com/macros/s/AKfycbxfegh7kmH3W1njOYJ0BSH-Vai0DUdt9pxn1MszcXCgfvfbR_j3TqJD1HC6yhD6PoqHOg/exec";
-    let session = { sId: "", comp: "", cCode: "" }; // cCodeを追加
+    let session = { sId: "", comp: "", cCode: "" };
     let tagIds = [];
     let masterData = [];
 
@@ -183,7 +183,7 @@
             const res = await callGas({ action: "login", id, pw });
             const data = await res.json();
             if (data.success) {
-                // ログイン時にcCode（会社ID）を保持
+                // 会社ID(cCode)を保持
                 session = { sId: data.sId, comp: data.compName, cCode: data.cCode };
                 document.getElementById('displayComp').innerText = "🏢 " + session.comp;
                 document.getElementById('mainNav').style.display = "flex";
@@ -195,14 +195,14 @@
 
     function switchView(v) {
         document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active-view'));
-        document.getElementById('view-' + v).classList.add('active-view');
+        const target = document.getElementById('view-' + v);
+        if(target) target.classList.add('active-view');
         document.getElementById('body').className = (v === 'scan' ? 'dark-mode' : '');
         if (v === 'list') loadAndShowList();
         if (v === 'staff') loadStaffList();
         if (v === 'register') loadToolMaster();
     }
 
-    // 社員リストの読み込み
     async function loadStaffList() {
         const tbd = document.getElementById('staffListTbd');
         if(tbd) tbd.innerHTML = "<tr><td colspan='3' class='text-center small text-muted'>読み込み中...</td></tr>";
@@ -210,7 +210,7 @@
             const res = await callGas({ action: "fetchStaff", sId: session.sId });
             const staff = await res.json();
             const sel = document.getElementById('scanUserSelect');
-            sel.innerHTML = '<option value="">選択してください...</option>' + 
+            if(sel) sel.innerHTML = '<option value="">選択してください...</option>' + 
                             staff.map(s => `<option value="${s[2]}">${s[2]} (${s[1] || '部署なし'})</option>`).join('');
 
             if(tbd) {
@@ -247,20 +247,21 @@
         } catch (e) { alert("削除失敗"); }
     }
 
-    // 道具一覧を読み込む（画像表示対応）
+    // ★道具一覧の表示（画像サムネイル対応）
     async function loadToolMaster() {
         const tbd = document.getElementById('toolMasterTbd');
+        if(!tbd) return;
         tbd.innerHTML = "<tr><td colspan='4' class='text-center small'>読み込み中...</td></tr>";
         try {
             const res = await callGas({ action: "fetchToolMaster", sId: session.sId });
             const tools = await res.json();
             
-            // t[0]:道具名, t[1]:タグID, t[2]:画像URL
             tbd.innerHTML = tools.map(t => {
-                const imgTag = t[2] ? `<img src="${t[2]}" style="width:40px;height:40px;object-fit:cover;border-radius:4px;">` : `<span class="text-muted" style="font-size:0.6rem">なし</span>`;
+                // t[2] に画像URLが入っている想定
+                const imgTag = t[2] ? `<img src="${t[2]}" style="width:45px; height:45px; object-fit:cover; border-radius:4px; border:1px solid #ddd;">` : `<span class="text-muted small">なし</span>`;
                 return `
                 <tr>
-                    <td>${imgTag}</td>
+                    <td class="text-center">${imgTag}</td>
                     <td class="fw-bold">${t[0] || ""}</td>
                     <td class="small text-secondary">${t[1] || ""}</td>
                     <td class="text-end">
@@ -272,7 +273,6 @@
         } catch (e) { tbd.innerHTML = "取得失敗"; }
     }
 
-    // 画像圧縮ロジック（横幅800px、画質70%）
     function compressImage(file) {
         return new Promise((resolve) => {
             const reader = new FileReader();
@@ -294,8 +294,7 @@
         });
     }
 
-    // 道具登録関数（画像アップロード対応）
-async function registerTool() {
+    async function registerTool() {
         const name = document.getElementById('regName').value;
         const tag = document.getElementById('regTag').value;
         const imgFile = document.getElementById('regImage').files[0];
@@ -308,11 +307,10 @@ async function registerTool() {
 
         let base64Image = "";
         if (imgFile) {
-            base64Image = await compressImage(imgFile); // 圧縮実行
+            base64Image = await compressImage(imgFile);
         }
 
         try {
-            // 重複チェック
             const resMaster = await callGas({ action: "fetchToolMaster", sId: session.sId });
             const tools = await resMaster.json();
             if (tools.some(t => t[1] === tag)) {
@@ -323,7 +321,7 @@ async function registerTool() {
             await callGas({ 
                 action: "addToolMaster", 
                 sId: session.sId, 
-                cCode: session.comp, // 会社IDを送信
+                cCode: session.cCode, // session.comp ではなく cCode（会社ID）を送る
                 name: name, 
                 tag: tag,
                 imageBlob: base64Image
@@ -335,50 +333,6 @@ async function registerTool() {
             loadToolMaster();
         } catch (e) { alert("失敗しました"); }
         btn.disabled = false; btn.innerText = "名簿に登録";
-    }
-
-    // 画像圧縮ロジック（横幅800px、画質70%）
-    function compressImage(file) {
-        return new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = (e) => {
-                const img = new Image();
-                img.src = e.target.result;
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    const MAX_WIDTH = 800;
-                    const scale = MAX_WIDTH / img.width;
-                    canvas.width = MAX_WIDTH;
-                    canvas.height = img.height * scale;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                    resolve(canvas.toDataURL('image/jpeg', 0.7));
-                };
-            };
-        });
-    }
-
-    // 道具一覧表示（画像サムネイル付き）
-    async function loadToolMaster() {
-        const tbd = document.getElementById('toolMasterTbd');
-        tbd.innerHTML = "<tr><td colspan='4' class='text-center small'>読み込み中...</td></tr>";
-        try {
-            const res = await callGas({ action: "fetchToolMaster", sId: session.sId });
-            const tools = await res.json();
-            tbd.innerHTML = tools.map(t => {
-                const imgTag = t[2] ? `<img src="${t[2]}" style="width:40px;height:40px;object-fit:cover;border-radius:4px;">` : `<span class="text-muted small">なし</span>`;
-                return `
-                <tr>
-                    <td>${imgTag}</td>
-                    <td class="fw-bold">${t[0]}</td>
-                    <td class="small text-secondary">${t[1]}</td>
-                    <td class="text-end">
-                        <button class="btn btn-outline-danger btn-sm" onclick="deleteTool('${t[1]}', '${t[0]}')">削除</button>
-                    </td>
-                </tr>`;
-            }).join('');
-        } catch (e) { tbd.innerHTML = "取得失敗"; }
     }
 
     async function deleteTool(name, tagId) {
@@ -413,6 +367,7 @@ async function registerTool() {
 
     async function loadAndShowList() {
         const tbd = document.getElementById('listTbd');
+        if(!tbd) return;
         tbd.innerHTML = "<tr><td colspan='4' class='text-center py-4 text-muted'>読み込み中...</td></tr>";
         try {
             const res = await callGas({ action: "fetchData", sId: session.sId });
@@ -424,7 +379,9 @@ async function registerTool() {
     }
 
     function renderTable(data) {
-        document.getElementById('listTbd').innerHTML = data.map(r => {
+        const tbd = document.getElementById('listTbd');
+        if(!tbd) return;
+        tbd.innerHTML = data.map(r => {
             const date = r[6] ? new Date(r[6]) : null;
             const dateStr = date ? `${date.getMonth()+1}/${date.getDate()} ${date.getHours()}:${date.getMinutes()}` : "-";
             return `<tr><td class="fw-bold">${r[1]}</td><td><div class="small">${r[2]}</div><div class="text-secondary" style="font-size:0.7rem">${r[3]}</div></td><td><span class="status-badge bg-${r[4]}">${r[4]}</span></td><td class="text-secondary" style="font-size:0.7rem">${dateStr}</td></tr>`;
@@ -433,8 +390,10 @@ async function registerTool() {
 
     function updateFilterOptions(data) {
         const make = (id, idx, label) => {
+            const target = document.getElementById(id);
+            if(!target) return;
             const vals = [...new Set(data.map(r => r[idx]))].filter(v => v).sort();
-            document.getElementById(id).innerHTML = `<option value="">${label}:すべて</option>` + vals.map(v => `<option value="${v}">${v}</option>`).join('');
+            target.innerHTML = `<option value="">${label}:すべて</option>` + vals.map(v => `<option value="${v}">${v}</option>`).join('');
         };
         make('fItem', 1, '道具'); make('fPlace', 2, '場所'); make('fUser', 3, '人'); make('fStatus', 4, '状況');
     }
@@ -460,7 +419,11 @@ async function registerTool() {
     async function scanSingleTag() {
         try {
             const ndef = new NDEFReader(); await ndef.scan();
-            ndef.onreading = event => { document.getElementById('regTag').value = event.serialNumber; if (navigator.vibrate) navigator.vibrate(100); };
+            ndef.onreading = event => { 
+                const target = document.getElementById('regTag');
+                if(target) target.value = event.serialNumber; 
+                if (navigator.vibrate) navigator.vibrate(100); 
+            };
         } catch (e) { alert("NFCエラー"); }
     }
 </script>
