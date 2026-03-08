@@ -89,73 +89,61 @@
         </div>
     </div>
 
-        <div id="view-register" class="view-section">
-            <div class="card card-custom border-0 mb-3">
-                <h4 class="fw-bold mb-4">➕ 道具管理</h4>
-                <div class="mb-3">
-                    <label class="form-label small fw-bold">道具名</label>
-                    <input type="text" id="regName" class="form-control" placeholder="例：インパクトレンチ A">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label small fw-bold">タグID</label>
-                    <div class="input-group">
-                        <input type="text" id="regTag" class="form-control bg-light" readonly>
-                        <button class="btn btn-secondary" onclick="scanSingleTag()">スキャン</button>
+    <div id="view-register" class="view-section">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-lg-5 col-md-12 mb-4">
+                    <div class="card card-custom border-0 shadow-sm">
+                        <h5 class="fw-bold mb-3">➕ 道具の新規登録</h5>
+                        
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">道具名</label>
+                            <input type="text" id="regName" class="form-control" placeholder="例：インパクトレンチA">
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">タグID</label>
+                            <div class="input-group">
+                                <input type="text" id="regTag" class="form-control bg-light" readonly>
+                                <button class="btn btn-secondary btn-sm" onclick="scanSingleTag()">スキャン</button>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">備考 (項目1)</label>
+                            <textarea id="regRemarks" class="form-control" rows="2" placeholder="購入日や型番など"></textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">写真</label>
+                            <input type="file" id="regImage" class="form-control" accept="image/*" capture="environment">
+                        </div>
+
+                        <button class="btn btn-success btn-lg w-100 py-3" id="btnReg" onclick="registerTool()">名簿に登録</button>
                     </div>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label small fw-bold">備考（項目1）</label>
-                    <textarea id="regRemarks" class="form-control" rows="2" placeholder="例：購入日、型番など"></textarea>
-                </div>
 
-                <div class="mb-3">
-                    <label class="form-label small fw-bold">写真（任意）</label>
-                    <input type="file" id="regImage" class="form-control" accept="image/*" capture="environment">
-                </div>
-                <button class="btn btn-success btn-lg w-100 py-3 mb-3" id="btnReg" onclick="registerTool()">名簿に登録</button>
-            </div>
-
-            <h6 class="fw-bold text-secondary ps-2">登録済み道具一覧</h6>
-            <div class="table-responsive bg-white rounded shadow-sm">
-                <table class="table table-sm table-hover align-middle mb-0">
-                    <thead class="table-light">
-                        <tr style="font-size: 0.75rem;"><th>写真</th><th>道具名</th><th>タグID</th><th>操作</th></tr>
-                    </thead>
-                    <tbody id="toolMasterTbd" style="font-size: 0.85rem;"></tbody>
-                </table>
-            </div><div id="view-register" class="view-section">
-        <div class="card card-custom border-0 mb-3">
-            <h4 class="fw-bold mb-4">➕ 道具管理</h4>
-            <div class="mb-3">
-                <label class="form-label small fw-bold">道具名</label>
-                <input type="text" id="regName" class="form-control" placeholder="例：インパクトレンチ A">
-            </div>
-            <div class="mb-3">
-                <label class="form-label small fw-bold">タグID</label>
-                <div class="input-group">
-                    <input type="text" id="regTag" class="form-control bg-light" readonly>
-                    <button class="btn btn-secondary" onclick="scanSingleTag()">スキャン</button>
+                <div class="col-lg-7 col-md-12">
+                    <div class="card card-custom border-0 shadow-sm h-100">
+                        <h5 class="fw-bold mb-3">📋 登録済み名簿</h5>
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle">
+                                <thead class="table-light">
+                                    <tr style="font-size: 0.8rem;">
+                                        <th>写真</th>
+                                        <th>道具詳細</th>
+                                        <th>タグID</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="toolMasterTbd" style="font-size: 0.85rem;"></tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div class="mb-3">
-                <label class="form-label small fw-bold">写真（任意）</label>
-                <input type="file" id="regImage" class="form-control" accept="image/*" capture="environment">
-            </div>
-            <button class="btn btn-success btn-lg w-100 py-3 mb-3" id="btnReg" onclick="registerTool()">名簿に登録</button>
-        </div>
-
-        <h6 class="fw-bold text-secondary ps-2">登録済み道具一覧</h6>
-        <div class="table-responsive bg-white rounded shadow-sm">
-            <table class="table table-sm table-hover align-middle mb-0">
-                <thead class="table-light">
-                    <tr style="font-size: 0.75rem;"><th>写真</th><th>道具名</th><th>タグID</th><th>操作</th></tr>
-                </thead>
-                <tbody id="toolMasterTbd" style="font-size: 0.85rem;"></tbody>
-            </table>
         </div>
     </div>
-    </div>
-
 <nav class="nav-fixed" id="mainNav" style="display:none;">
     <a href="javascript:void(0)" class="text-decoration-none text-center small text-dark" onclick="switchView('scan')">📡<br>スキャン</a>
     <a href="javascript:void(0)" class="text-decoration-none text-center small text-dark" onclick="switchView('list')">📋<br>一覧</a>
@@ -299,14 +287,14 @@
     async function registerTool() {
         const name = document.getElementById('regName').value;
         const tag = document.getElementById('regTag').value;
-        const remarks = document.getElementById('regRemarks').value; // ★追加
+        const remarks = document.getElementById('regRemarks').value;
         const imgFile = document.getElementById('regImage').files[0];
         const btn = document.getElementById('btnReg');
 
-        if(!name || !tag) return alert("道具名とタグIDを入力してください");
+        if(!name || !tag) return alert("道具名とタグIDは必須です");
 
         btn.disabled = true;
-        btn.innerText = "処理中...";
+        btn.innerText = "登録中...";
 
         let base64Image = "";
         if (imgFile) {
@@ -320,18 +308,20 @@
                 cCode: session.cCode,
                 name: name, 
                 tag: tag,
-                remarks: remarks, // ★GASへ送信
+                remarks: remarks,
                 imageBlob: base64Image
             });
             alert("登録完了！");
             document.getElementById('regName').value = "";
             document.getElementById('regTag').value = "";
-            document.getElementById('regRemarks').value = ""; // ★クリア
-            if(document.getElementById('regImage')) document.getElementById('regImage').value = "";
+            document.getElementById('regRemarks').value = "";
+            document.getElementById('regImage').value = "";
             loadToolMaster();
-        } catch (e) { alert("失敗しました"); }
-        btn.disabled = false; btn.innerText = "名簿に登録";
+        } catch (e) { alert("エラーが発生しました"); }
+        btn.disabled = false;
+        btn.innerText = "名簿に登録";
     }
+
 
     async function startNFC() {
         if (!('NDEFReader' in window)) return alert("NFC非対応ブラウザです");
