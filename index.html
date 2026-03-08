@@ -104,6 +104,11 @@
                     </div>
                 </div>
                 <div class="mb-3">
+                    <label class="form-label small fw-bold">備考（項目1）</label>
+                    <textarea id="regRemarks" class="form-control" rows="2" placeholder="例：購入日、型番など"></textarea>
+                </div>
+
+                <div class="mb-3">
                     <label class="form-label small fw-bold">写真（任意）</label>
                     <input type="file" id="regImage" class="form-control" accept="image/*" capture="environment">
                 </div>
@@ -251,22 +256,19 @@
     async function loadToolMaster() {
         const tbd = document.getElementById('toolMasterTbd');
         if(!tbd) return;
-        tbd.innerHTML = "<tr><td colspan='4' class='text-center small'>読み込み中...</td></tr>";
+        tbd.innerHTML = "<tr><td colspan='5' class='text-center small'>読み込み中...</td></tr>";
         try {
             const res = await callGas({ action: "fetchToolMaster", sId: session.sId });
             const tools = await res.json();
             
             tbd.innerHTML = tools.map(t => {
-                // t[2] に画像URLが入っている想定
-                const imgTag = t[2] ? `<img src="${t[2]}" style="width:45px; height:45px; object-fit:cover; border-radius:4px; border:1px solid #ddd;">` : `<span class="text-muted small">なし</span>`;
+                const imgTag = t[2] ? `<img src="${t[2]}" style="width:45px; height:45px; object-fit:cover; border-radius:4px;">` : `<span class="text-muted small">なし</span>`;
                 return `
                 <tr>
                     <td class="text-center">${imgTag}</td>
-                    <td class="fw-bold">${t[0] || ""}</td>
-                    <td class="small text-secondary">${t[1] || ""}</td>
+                    <td class="fw-bold">${t[0] || ""}<br><small class="text-muted fw-normal">${t[3] || ""}</small></td> <td class="small text-secondary">${t[1] || ""}</td>
                     <td class="text-end">
-                        <button class="btn btn-outline-danger btn-sm" style="font-size: 0.6rem;" 
-                            onclick="deleteTool('${t[0]}', '${t[1]}')">削除</button>
+                        <button class="btn btn-outline-danger btn-sm" onclick="deleteTool('${t[0]}', '${t[1]}')">削除</button>
                     </td>
                 </tr>`;
             }).join('');
@@ -297,6 +299,7 @@
     async function registerTool() {
         const name = document.getElementById('regName').value;
         const tag = document.getElementById('regTag').value;
+        const remarks = document.getElementById('regRemarks').value; // ★追加
         const imgFile = document.getElementById('regImage').files[0];
         const btn = document.getElementById('btnReg');
 
@@ -311,38 +314,23 @@
         }
 
         try {
-            const resMaster = await callGas({ action: "fetchToolMaster", sId: session.sId });
-            const tools = await resMaster.json();
-            if (tools.some(t => t[1] === tag)) {
-                btn.disabled = false; btn.innerText = "名簿に登録";
-                return alert("このタグIDは既に登録されています");
-            }
-
             await callGas({ 
                 action: "addToolMaster", 
                 sId: session.sId, 
-                cCode: session.cCode, // session.comp ではなく cCode（会社ID）を送る
+                cCode: session.cCode,
                 name: name, 
                 tag: tag,
+                remarks: remarks, // ★GASへ送信
                 imageBlob: base64Image
             });
             alert("登録完了！");
             document.getElementById('regName').value = "";
             document.getElementById('regTag').value = "";
-            document.getElementById('regImage').value = "";
+            document.getElementById('regRemarks').value = ""; // ★クリア
+            if(document.getElementById('regImage')) document.getElementById('regImage').value = "";
             loadToolMaster();
         } catch (e) { alert("失敗しました"); }
         btn.disabled = false; btn.innerText = "名簿に登録";
-    }
-
-    async function deleteTool(name, tagId) {
-        if(!confirm("「" + name + "」を完全に削除しますか？")) return;
-        try {
-            await callGas({ action: "deleteToolFull", sId: session.sId, name: name, tagId: tagId });
-            alert("削除しました");
-            loadToolMaster(); 
-            loadAndShowList(); 
-        } catch (e) { alert("削除失敗"); }
     }
 
     async function startNFC() {
