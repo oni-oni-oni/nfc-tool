@@ -89,7 +89,36 @@
         </div>
     </div>
 
-    <div id="view-register" class="view-section">
+        <div id="view-register" class="view-section">
+            <div class="card card-custom border-0 mb-3">
+                <h4 class="fw-bold mb-4">➕ 道具管理</h4>
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">道具名</label>
+                    <input type="text" id="regName" class="form-control" placeholder="例：インパクトレンチ A">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">タグID</label>
+                    <div class="input-group">
+                        <input type="text" id="regTag" class="form-control bg-light" readonly>
+                        <button class="btn btn-secondary" onclick="scanSingleTag()">スキャン</button>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">写真（任意）</label>
+                    <input type="file" id="regImage" class="form-control" accept="image/*" capture="environment">
+                </div>
+                <button class="btn btn-success btn-lg w-100 py-3 mb-3" id="btnReg" onclick="registerTool()">名簿に登録</button>
+            </div>
+
+            <h6 class="fw-bold text-secondary ps-2">登録済み道具一覧</h6>
+            <div class="table-responsive bg-white rounded shadow-sm">
+                <table class="table table-sm table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr style="font-size: 0.75rem;"><th>写真</th><th>道具名</th><th>タグID</th><th>操作</th></tr>
+                    </thead>
+                    <tbody id="toolMasterTbd" style="font-size: 0.85rem;"></tbody>
+                </table>
+            </div><div id="view-register" class="view-section">
         <div class="card card-custom border-0 mb-3">
             <h4 class="fw-bold mb-4">➕ 道具管理</h4>
             <div class="mb-3">
@@ -103,17 +132,24 @@
                     <button class="btn btn-secondary" onclick="scanSingleTag()">スキャン</button>
                 </div>
             </div>
-            <button class="btn btn-success btn-lg w-100 py-3 mb-3" onclick="registerTool()">名簿に登録</button>
+            <div class="mb-3">
+                <label class="form-label small fw-bold">写真（任意）</label>
+                <input type="file" id="regImage" class="form-control" accept="image/*" capture="environment">
+            </div>
+            <button class="btn btn-success btn-lg w-100 py-3 mb-3" id="btnReg" onclick="registerTool()">名簿に登録</button>
         </div>
+
         <h6 class="fw-bold text-secondary ps-2">登録済み道具一覧</h6>
         <div class="table-responsive bg-white rounded shadow-sm">
             <table class="table table-sm table-hover align-middle mb-0">
-                <thead class="table-light"><tr><th>道具名</th><th>タグID</th><th>操作</th></tr></thead>
+                <thead class="table-light">
+                    <tr style="font-size: 0.75rem;"><th>写真</th><th>道具名</th><th>タグID</th><th>操作</th></tr>
+                </thead>
                 <tbody id="toolMasterTbd" style="font-size: 0.85rem;"></tbody>
             </table>
         </div>
     </div>
-</div>
+    </div>
 
 <nav class="nav-fixed" id="mainNav" style="display:none;">
     <a href="javascript:void(0)" class="text-decoration-none text-center small text-dark" onclick="switchView('scan')">📡<br>スキャン</a>
@@ -125,7 +161,7 @@
 
 <script>
     const GAS_URL = "https://script.google.com/macros/s/AKfycbxfegh7kmH3W1njOYJ0BSH-Vai0DUdt9pxn1MszcXCgfvfbR_j3TqJD1HC6yhD6PoqHOg/exec";
-    let session = { sId: "", comp: "" };
+    let session = { sId: "", comp: "", cCode: "" }; // cCodeを追加
     let tagIds = [];
     let masterData = [];
 
@@ -147,7 +183,8 @@
             const res = await callGas({ action: "login", id, pw });
             const data = await res.json();
             if (data.success) {
-                session = { sId: data.sId, comp: data.compName };
+                // ログイン時にcCode（会社ID）を保持
+                session = { sId: data.sId, comp: data.compName, cCode: data.cCode };
                 document.getElementById('displayComp').innerText = "🏢 " + session.comp;
                 document.getElementById('mainNav').style.display = "flex";
                 loadStaffList();
@@ -165,20 +202,17 @@
         if (v === 'register') loadToolMaster();
     }
 
-    // 社員リストの読み込み（A:会社ID[0], B:部署[1], C:名前[2]）
+    // 社員リストの読み込み
     async function loadStaffList() {
         const tbd = document.getElementById('staffListTbd');
         if(tbd) tbd.innerHTML = "<tr><td colspan='3' class='text-center small text-muted'>読み込み中...</td></tr>";
         try {
             const res = await callGas({ action: "fetchStaff", sId: session.sId });
             const staff = await res.json();
-            
-            // スキャン画面のドロップダウンを更新
             const sel = document.getElementById('scanUserSelect');
             sel.innerHTML = '<option value="">選択してください...</option>' + 
                             staff.map(s => `<option value="${s[2]}">${s[2]} (${s[1] || '部署なし'})</option>`).join('');
 
-            // 社員管理画面の一覧を更新
             if(tbd) {
                 tbd.innerHTML = staff.map(s => `
                     <tr>
@@ -198,7 +232,7 @@
         const dept = document.getElementById('staffDept').value, name = document.getElementById('staffName').value;
         if(!dept || !name) return alert("入力不足");
         try {
-            await callGas({ action: "addMyStaff", sId: session.sId, dept, name, cCode: session.comp });
+            await callGas({ action: "addMyStaff", sId: session.sId, dept, name, cCode: session.cCode });
             alert("社員を登録しました");
             document.getElementById('staffDept').value = ""; document.getElementById('staffName').value = "";
             loadStaffList();
@@ -213,79 +247,144 @@
         } catch (e) { alert("削除失敗"); }
     }
 
-    // 道具一覧を読み込む関数（A列：道具名、B列：タグID の順で表示）
+    // 道具一覧を読み込む（画像表示対応）
     async function loadToolMaster() {
         const tbd = document.getElementById('toolMasterTbd');
-        tbd.innerHTML = "<tr><td colspan='3' class='text-center small'>読み込み中...</td></tr>";
+        tbd.innerHTML = "<tr><td colspan='4' class='text-center small'>読み込み中...</td></tr>";
         try {
             const res = await callGas({ action: "fetchToolMaster", sId: session.sId });
             const tools = await res.json();
             
-            // t[0]が道具名、t[1]がタグIDとして処理
-            tbd.innerHTML = tools.map(t => `
+            // t[0]:道具名, t[1]:タグID, t[2]:画像URL
+            tbd.innerHTML = tools.map(t => {
+                const imgTag = t[2] ? `<img src="${t[2]}" style="width:40px;height:40px;object-fit:cover;border-radius:4px;">` : `<span class="text-muted" style="font-size:0.6rem">なし</span>`;
+                return `
                 <tr>
+                    <td>${imgTag}</td>
                     <td class="fw-bold">${t[0] || ""}</td>
                     <td class="small text-secondary">${t[1] || ""}</td>
                     <td class="text-end">
                         <button class="btn btn-outline-danger btn-sm" style="font-size: 0.6rem;" 
                             onclick="deleteTool('${t[0]}', '${t[1]}')">削除</button>
                     </td>
-                </tr>
-            `).join('');
+                </tr>`;
+            }).join('');
         } catch (e) { tbd.innerHTML = "取得失敗"; }
     }
 
-// 道具登録関数（タグIDの重複チェック付き）
-    async function registerTool() {
+    // 画像圧縮ロジック（横幅800px、画質70%）
+    function compressImage(file) {
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (e) => {
+                const img = new Image();
+                img.src = e.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 800;
+                    const scale = MAX_WIDTH / img.width;
+                    canvas.width = MAX_WIDTH;
+                    canvas.height = img.height * scale;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    resolve(canvas.toDataURL('image/jpeg', 0.7));
+                };
+            };
+        });
+    }
+
+    // 道具登録関数（画像アップロード対応）
+async function registerTool() {
         const name = document.getElementById('regName').value;
         const tag = document.getElementById('regTag').value;
+        const imgFile = document.getElementById('regImage').files[0];
+        const btn = document.getElementById('btnReg');
 
         if(!name || !tag) return alert("道具名とタグIDを入力してください");
 
-        // --- 重複チェック開始 ---
-        try {
-            // 現在の道具名簿を一度取得してチェックする
-            const res = await callGas({ action: "fetchToolMaster", sId: session.sId });
-            const tools = await res.json();
-            
-            // tools の各行の [1]（タグID）に、今回入力した tag が含まれているか確認
-            const isDuplicate = tools.some(t => t[1] === tag);
-            
-            if (isDuplicate) {
-                const existingTool = tools.find(t => t[1] === tag);
-                return alert("エラー：このタグIDは既に登録されています。\n登録済みの道具名: " + existingTool[0]);
-            }
-        } catch (e) {
-            console.error("重複チェック中にエラーが発生しました", e);
-            // 通信エラーなどでチェックできない場合は安全のために中断するか、そのまま進めるか判断が必要ですが、
-            // ここでは一旦停止して警告を出すようにします。
-            return alert("名簿の確認に失敗しました。通信環境を確認してください。");
-        }
-        // --- 重複チェック終了 ---
+        btn.disabled = true;
+        btn.innerText = "処理中...";
 
-        // 重複がなければ登録実行
+        let base64Image = "";
+        if (imgFile) {
+            base64Image = await compressImage(imgFile); // 圧縮実行
+        }
+
         try {
-            await callGas({ action: "addToolMaster", sId: session.sId, name: name, tag: tag });
-            alert("登録が完了しました！");
+            // 重複チェック
+            const resMaster = await callGas({ action: "fetchToolMaster", sId: session.sId });
+            const tools = await resMaster.json();
+            if (tools.some(t => t[1] === tag)) {
+                btn.disabled = false; btn.innerText = "名簿に登録";
+                return alert("このタグIDは既に登録されています");
+            }
+
+            await callGas({ 
+                action: "addToolMaster", 
+                sId: session.sId, 
+                cCode: session.comp, // 会社IDを送信
+                name: name, 
+                tag: tag,
+                imageBlob: base64Image
+            });
+            alert("登録完了！");
             document.getElementById('regName').value = "";
             document.getElementById('regTag').value = "";
-            loadToolMaster(); // リスト更新
-        } catch (e) {
-            alert("登録に失敗しました");
-        }
+            document.getElementById('regImage').value = "";
+            loadToolMaster();
+        } catch (e) { alert("失敗しました"); }
+        btn.disabled = false; btn.innerText = "名簿に登録";
     }
 
-    // 道具削除関数
+    // 画像圧縮ロジック（横幅800px、画質70%）
+    function compressImage(file) {
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (e) => {
+                const img = new Image();
+                img.src = e.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 800;
+                    const scale = MAX_WIDTH / img.width;
+                    canvas.width = MAX_WIDTH;
+                    canvas.height = img.height * scale;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    resolve(canvas.toDataURL('image/jpeg', 0.7));
+                };
+            };
+        });
+    }
+
+    // 道具一覧表示（画像サムネイル付き）
+    async function loadToolMaster() {
+        const tbd = document.getElementById('toolMasterTbd');
+        tbd.innerHTML = "<tr><td colspan='4' class='text-center small'>読み込み中...</td></tr>";
+        try {
+            const res = await callGas({ action: "fetchToolMaster", sId: session.sId });
+            const tools = await res.json();
+            tbd.innerHTML = tools.map(t => {
+                const imgTag = t[2] ? `<img src="${t[2]}" style="width:40px;height:40px;object-fit:cover;border-radius:4px;">` : `<span class="text-muted small">なし</span>`;
+                return `
+                <tr>
+                    <td>${imgTag}</td>
+                    <td class="fw-bold">${t[0]}</td>
+                    <td class="small text-secondary">${t[1]}</td>
+                    <td class="text-end">
+                        <button class="btn btn-outline-danger btn-sm" onclick="deleteTool('${t[1]}', '${t[0]}')">削除</button>
+                    </td>
+                </tr>`;
+            }).join('');
+        } catch (e) { tbd.innerHTML = "取得失敗"; }
+    }
+
     async function deleteTool(name, tagId) {
         if(!confirm("「" + name + "」を完全に削除しますか？")) return;
-        
         try {
-            await callGas({ 
-                action: "deleteToolFull", 
-                sId: session.sId, 
-                name: name,   // 道具名で削除指示
-                tagId: tagId 
-            });
+            await callGas({ action: "deleteToolFull", sId: session.sId, name: name, tagId: tagId });
             alert("削除しました");
             loadToolMaster(); 
             loadAndShowList(); 
