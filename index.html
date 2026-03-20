@@ -66,7 +66,14 @@
         </div>
         <div class="table-responsive bg-white rounded shadow-sm">
             <table class="table table-hover align-middle mb-0">
-                <thead class="table-light"><tr><th>道具名</th><th>場所/人</th><th>状況/日付</th></tr></thead>
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 50px;">写真</th>
+                            <th>道具名</th>
+                            <th>場所/人</th>
+                            <th>状況/日付</th>
+                        </tr>
+                    </thead>
                 <tbody id="listTbd" style="font-size: 0.85rem;"></tbody>
             </table>
         </div>
@@ -356,17 +363,34 @@
         } catch (e) { tbd.innerHTML = "取得失敗"; }
     }
 
-    function renderTable(data) {
-        const tbd = document.getElementById('listTbd');
-        if(!tbd) return;
+
+    async function renderTable(data) {
+    const tbd = document.getElementById('listTbd');
+    if(!tbd) return;
+    
+        // 道具名から画像URLを引くためのマップを作成（高速化のため）
+        const toolRes = await callGas({ action: "fetchToolMaster", sId: session.sId });
+        const tools = await toolRes.json();
+        const imageMap = {};
+        tools.forEach(t => { imageMap[t[0]] = t[2]; }); // 道具名をキー、URLを値にする
+
         tbd.innerHTML = data.map(r => {
-            // 日付フォーマットの調整 (3/8 15:30 のような形式)
+            const toolName = r[1];
+            const imageUrl = imageMap[toolName]; // 名簿から画像を取得
+            
+            // 画像HTMLの生成
+            const imgHtml = imageUrl ? 
+                `<img src="${imageUrl}" style="width:40px; height:40px; object-fit:cover; border-radius:6px; cursor:pointer;" onclick="window.open('${imageUrl}')">` : 
+                `<div class="bg-light text-muted d-flex align-items-center justify-content-center" style="width:40px; height:40px; border-radius:6px; font-size:0.5rem;">なし</div>`;
+
+            // 日付フォーマット
             const date = r[6] ? new Date(r[6]) : null;
             const dateStr = date ? `${date.getMonth()+1}/${date.getDate()} ${date.getHours()}:${('0'+date.getMinutes()).slice(-2)}` : "-";
             
             return `
             <tr>
-                <td class="fw-bold">${r[1]}</td>
+                <td class="text-center">${imgHtml}</td>
+                <td class="fw-bold" style="font-size: 0.85rem;">${toolName}</td>
                 <td>
                     <div class="small">${r[2]}</div>
                     <div class="text-secondary" style="font-size:0.7rem">${r[3]}</div>
