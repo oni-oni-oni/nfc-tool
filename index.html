@@ -172,7 +172,27 @@
             body: JSON.stringify(payload)
         });
     }
+    let isEditMode = false; // 現在が編集モードかどうか
+    let currentEditImageUrl = ""; // 編集中の既存画像URL
 
+    // 編集ボタンを押した時の処理
+    function editTool(name, tag, imageUrl, remarks) {
+        isEditMode = true;
+        currentEditImageUrl = imageUrl;
+        
+        // フォームに値をセット
+        document.getElementById('regName').value = name;
+        document.getElementById('regTag').value = tag;
+        document.getElementById('regRemarks').value = remarks;
+        
+        // ボタンの見た目を変える
+        const btn = document.getElementById('btnReg');
+        btn.innerText = "🛠 上書き保存する";
+        btn.classList.replace('btn-success', 'btn-warning');
+        
+        // 画面上部（フォーム）へスクロール
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
     async function handleLogin() {
         const id = document.getElementById('userId').value;
         const pw = document.getElementById('userPw').value;
@@ -259,11 +279,21 @@
             tbd.innerHTML = tools.map(t => {
                 const imgTag = t[2] ? `<img src="${t[2]}" style="width:45px; height:45px; object-fit:cover; border-radius:4px;">` : `<span class="text-muted small">なし</span>`;
                 return `
+                
                 <tr>
-                    <td class="text-center">${imgTag}</td>
-                    <td class="fw-bold">${t[0] || ""}<br><small class="text-muted fw-normal">${t[3] || ""}</small></td> <td class="small text-secondary">${t[1] || ""}</td>
+                    <td>${imgHtml}</td>
+                    <td>
+                        <div class="fw-bold">${t[0]}</div>
+                        <div class="text-muted small">${t[3] || ""}</div>
+                    </td>
+                    <td class="text-secondary small">${t[1]}</td>
                     <td class="text-end">
-                        <button class="btn btn-outline-danger btn-sm" onclick="deleteTool('${t[0]}', '${t[1]}')">削除</button>
+                        <div class="d-flex gap-1">
+                            <button class="btn btn-outline-primary btn-sm" 
+                                onclick="editTool('${t[0]}', '${t[1]}', '${t[2]}', '${t[3]||''}')">編集</button>
+                            <button class="btn btn-outline-danger btn-sm" 
+                                onclick="deleteTool('${t[0]}', '${t[1]}')">削除</button>
+                        </div>
                     </td>
                 </tr>`;
             }).join('');
@@ -291,6 +321,7 @@
         });
     }
 
+    // 登録・編集ボタンの実行処理（既存のregisterToolを拡張）
     async function registerTool() {
         const name = document.getElementById('regName').value;
         const tag = document.getElementById('regTag').value;
@@ -301,7 +332,7 @@
         if(!name || !tag) return alert("道具名とタグIDは必須です");
 
         btn.disabled = true;
-        btn.innerText = "登録中...";
+        btn.innerText = "処理中...";
 
         let base64Image = "";
         if (imgFile) {
@@ -316,17 +347,30 @@
                 name: name, 
                 tag: tag,
                 remarks: remarks,
-                imageBlob: base64Image
+                imageBlob: base64Image,
+                existingUrl: isEditMode ? currentEditImageUrl : "" // 編集時は元のURLを渡す
             });
-            alert("登録完了！");
-            document.getElementById('regName').value = "";
-            document.getElementById('regTag').value = "";
-            document.getElementById('regRemarks').value = "";
-            document.getElementById('regImage').value = "";
+
+            alert(isEditMode ? "修正しました" : "登録しました");
+            
+            // モードをリセット
+            resetRegisterForm();
             loadToolMaster();
         } catch (e) { alert("エラーが発生しました"); }
         btn.disabled = false;
+    }
+
+    // フォームを真っさらに戻す関数
+    function resetRegisterForm() {
+        isEditMode = false;
+        currentEditImageUrl = "";
+        document.getElementById('regName').value = "";
+        document.getElementById('regTag').value = "";
+        document.getElementById('regRemarks').value = "";
+        document.getElementById('regImage').value = "";
+        const btn = document.getElementById('btnReg');
         btn.innerText = "名簿に登録";
+        btn.classList.replace('btn-warning', 'btn-success');
     }
 
 
