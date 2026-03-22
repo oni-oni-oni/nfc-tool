@@ -271,33 +271,43 @@
     async function loadToolMaster() {
         const tbd = document.getElementById('toolMasterTbd');
         if(!tbd) return;
-        tbd.innerHTML = "<tr><td colspan='5' class='text-center small'>読み込み中...</td></tr>";
+        tbd.innerHTML = "<tr><td colspan='4' class='text-center small'>読み込み中...</td></tr>";
         try {
             const res = await callGas({ action: "fetchToolMaster", sId: session.sId });
             const tools = await res.json();
             
+            // データが空の場合の処理を追加
+            if (!tools || tools.length === 0) {
+                tbd.innerHTML = "<tr><td colspan='4' class='text-center'>登録データがありません</td></tr>";
+                return;
+            }
+
             tbd.innerHTML = tools.map(t => {
+                // 画像がある場合は表示、ない場合は「なし」
                 const imgTag = t[2] ? `<img src="${t[2]}" style="width:45px; height:45px; object-fit:cover; border-radius:4px;">` : `<span class="text-muted small">なし</span>`;
-                return `
                 
+                return `
                 <tr>
-                    <td>${imgHtml}</td>
+                    <td class="text-center">${imgTag}</td> 
                     <td>
-                        <div class="fw-bold">${t[0]}</div>
+                        <div class="fw-bold">${t[0] || ""}</div>
                         <div class="text-muted small">${t[3] || ""}</div>
                     </td>
-                    <td class="text-secondary small">${t[1]}</td>
+                    <td class="text-secondary small">${t[1] || ""}</td>
                     <td class="text-end">
                         <div class="d-flex gap-1">
                             <button class="btn btn-outline-primary btn-sm" 
-                                onclick="editTool('${t[0]}', '${t[1]}', '${t[2]}', '${t[3]||''}')">編集</button>
+                                onclick="editTool('${t[0]}', '${t[1]}', '${t[2] || ''}', '${t[3] || ''}')">編集</button>
                             <button class="btn btn-outline-danger btn-sm" 
-                                onclick="deleteTool('${t[0]}', '${t[1]}')">削除</button>
+                                onclick="deleteToolFull('${t[0]}', '${t[1]}')">削除</button>
                         </div>
                     </td>
                 </tr>`;
             }).join('');
-        } catch (e) { tbd.innerHTML = "取得失敗"; }
+        } catch (e) { 
+            console.error(e);
+            tbd.innerHTML = "<tr><td colspan='4' class='text-center'>取得失敗</td></tr>"; 
+        }
     }
 
     function compressImage(file) {
