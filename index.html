@@ -217,13 +217,13 @@
         document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active-view'));
         const target = document.getElementById('view-' + v);
         if(target) target.classList.add('active-view');
-        document.getElementById('body').className = (v === 'scan' ? 'dark-mode' : '');
-
-        // 登録画面以外に切り替えたときに、編集モードや入力内容をクリアする
+        
+        // 登録画面以外に切り替えたらフォームをリセット
         if (v !== 'register') {
             resetRegisterForm();
         }
 
+        document.getElementById('body').className = (v === 'scan' ? 'dark-mode' : '');
         if (v === 'list') loadAndShowList();
         if (v === 'staff') loadStaffList();
         if (v === 'register') loadToolMaster();
