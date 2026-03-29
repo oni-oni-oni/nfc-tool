@@ -108,50 +108,67 @@ function doPost(e) {
     }
 
     if (action === "deleteToolFull") {
-      const ss = SpreadsheetApp.openById(sId);
-      const targetTag = params.tagId ? params.tagId.toString().trim() : "";
-      
-      // デバッグ用ログ：受け取ったIDを1枚目のシートの空きセル等にメモ（後で確認用）
-      // ss.getSheets()[0].appendRow(["DEBUG_DELETE_START", targetTag, new Date()]);
+      try {
+        const ss = SpreadsheetApp.openById(sId);
+        const targetTag = params.tagId ? params.tagId.toString().trim().toUpperCase() : "";
+        
+        if (!targetTag) return ContentService.createTextOutput("エラー: タグIDが空です");
 
-      if (!targetTag) return ContentService.createTextOutput("エラー: タグIDが空です");
+        let mCount = 0;
+        let sCount = 0;
+        let log = [];
 
-      let masterDeleteCount = 0;
-      let statusDeleteCount = 0;
-
-      // --- A. 道具名簿シートから削除 ---
-      const masterSheet = ss.getSheetByName("道具名簿");
-      if (masterSheet) {
-        const masterData = masterSheet.getDataRange().getValues();
-        for (let i = masterData.length - 1; i >= 1; i--) {
-          let sheetTag = masterData[i][1] ? masterData[i][1].toString().trim() : "";
-          
-          // 一致判定のログ（問題がある場合はここを有効にしてスプレッドシートを確認）
-          // console.log("Comparing: '" + sheetTag + "' with '" + targetTag + "'");
-
-          if (sheetTag === targetTag) {
-            masterSheet.deleteRow(i + 1);
-            masterDeleteCount++;
+        // --- A. 道具名簿 ---
+        const masterSheet = ss.getSheetByName("道具名簿");
+        if (!masterSheet) {
+          log.push("「道具名簿」シートが見つかりません");
+        } else {
+          const mData = masterSheet.getDataRange().getValues();
+          for (let i = mData.length - 1; i >= 1; i--) {
+            let sheetTag = mData[i][1] ? mData[i][1].toString().trim().toUpperCase() : "";
+            if (sheetTag === targetTag) {
+              masterSheet.deleteRow(i + 1);
+              mCount++;
+            }
           }
         }
-      }
 
-      // --- B. 稼働状況（1番目のシート）から削除 ---
-      const statusSheet = ss.getSheets()[0];
-      if (statusSheet) {
-        const statusData = statusSheet.getDataRange().getValues();
-        for (let i = statusData.length - 1; i >= 1; i--) {
-          let sheetTag = statusData[i][5] ? statusData[i][5].toString().trim() : "";
-          if (sheetTag === targetTag) {
-            statusSheet.deleteRow(i + 1);
-            statusDeleteCount++;
+        // --- B. 稼働状況（1枚目のシート） ---
+        const statusSheet = ss.getSheets()[0];
+        if (!statusSheet) {
+          log.push("稼働状況シートが見つかりません");
+        } else {
+          const sData = statusSheet.getDataRange().getValues();
+          for (let i = sData.length - 1; i >= 1; i--) {
+            let sheetTag = sData[i][5] ? sData[i][5].toString().trim().toUpperCase() : "";
+            if (sheetTag === targetTag) {
+              statusSheet.deleteRow(i + 1);
+              sCount++;
+            }
           }
         }
-      }
 
-      // 結果を詳しく返却
-      const resultMsg = "削除完了 (名簿:" + masterDeleteCount + "件, 履歴:" + statusDeleteCount + "件)";
-      return ContentService.createTextOutput(resultMsg);
+        let resMsg = "完了: 名簿" + mCount + "件 / 履歴" + sCount + "件";
+        if (log.length > 0) resMsg += "\n警告: " + log.join(", ");
+        
+        return ContentService.createTextOutput(resMsg);
+
+      } catch (e) {
+        return ContentService.createTextOutput("GAS内部エラー: " + e.message);
+      }
+    }
+
+    // --- fetchToolMaster（読み込み中対策） ---
+    if (action === "fetchToolMaster") {
+      try {
+        const ss = SpreadsheetApp.openById(sId);
+        const sheet = ss.getSheetByName("道具名簿");
+        if (!sheet) return ContentService.createTextOutput(JSON.stringify([])).setMimeType(ContentService.MimeType.JSON);
+        const data = sheet.getDataRange().getValues();
+        return ContentService.createTextOutput(JSON.stringify(data.slice(1))).setMimeType(ContentService.MimeType.JSON);
+      } catch (e) {
+        return ContentService.createTextOutput(JSON.stringify([])).setMimeType(ContentService.MimeType.JSON);
+      }
     }
 
     // --- 6. その他（既存ロジック） ---
@@ -207,26 +224,3 @@ function bulkUpdateByTagIds(sId, tagIds, userName, placeName, status) {
   return count + "件更新完了";
 }
 
-// 削除実行関数
-    async function deleteToolFull(name, tagId) {
-        if(!confirm("「" + name + "」を完全に削除しますか？")) return;
-        
-        try {
-            const res = await callGas({ 
-                action: "deleteToolFull", 
-                sId: session.sId, 
-                tagId: String(tagId) // 型エラー防止
-            });
-            const resultText = await res.text();
-            
-            // ここで「0件」と出るか「1件」と出るかが運命の分かれ道です
-            alert(resultText); 
-            
-            // 再読み込み
-            loadToolMaster();
-            if (window.loadAndShowList) loadAndShowList();
-            
-        } catch (e) {
-            alert("通信失敗: " + e);
-        }
-    }
