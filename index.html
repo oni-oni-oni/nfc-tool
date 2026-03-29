@@ -316,28 +316,29 @@
     }
 
 
+    // 削除実行関数
     async function deleteToolFull(name, tagId) {
-        if(!confirm("「" + name + "」を名簿と履歴から完全に削除しますか？")) return;
+        if(!confirm("「" + name + "」を完全に削除しますか？")) return;
         
         try {
             const res = await callGas({ 
                 action: "deleteToolFull", 
                 sId: session.sId, 
-                tagId: String(tagId) // 明示的に文字列に変換
+                tagId: String(tagId) // 型エラー防止
             });
-            const msg = await res.text();
-            alert(msg);
+            const resultText = await res.text();
             
-            // リストを更新
+            // ここで「0件」と出るか「1件」と出るかが運命の分かれ道です
+            alert(resultText); 
+            
+            // 再読み込み
             loadToolMaster();
-            if (window.loadAndShowList) loadAndShowList(); 
+            if (window.loadAndShowList) loadAndShowList();
             
         } catch (e) {
-            console.error(e);
-            alert("通信エラーが発生しました");
+            alert("通信失敗: " + e);
         }
     }
-
     function compressImage(file) {
         return new Promise((resolve) => {
             const reader = new FileReader();
