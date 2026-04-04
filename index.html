@@ -59,8 +59,7 @@
 </nav>
 
 <script>
-    const GAS_URL = "あなたのGASデプロイURL";
-    let session = { sId: "", folderId: "" };
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbxfegh7kmH3W1njOYJ0BSH-Vai0DUdt9pxn1MszcXCgfvfbR_j3TqJD1HC6yhD6PoqHOg/exec";    let session = { sId: "", folderId: "" };
     let toolMap = {};
 
     async function callGas(p) { return await fetch(GAS_URL, { method: "POST", body: JSON.stringify(p) }); }
