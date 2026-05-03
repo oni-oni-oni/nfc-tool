@@ -111,7 +111,7 @@
       if (data.success) {
         session = data;
         document.getElementById('displayCompany').innerText = data.companyCode;
-        document.getElementById('view-login').style.display = "none";
+        document.getElementById('view-login').classList.remove('active-view');
         document.getElementById('view-main').classList.add('active-view');
         loadToolsData();
       } else { msg.innerText = data.message; }
