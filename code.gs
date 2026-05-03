@@ -15,6 +15,8 @@ function doPost(e) {
     case "fetchStaff":      res = getD(p.sId, "社員名簿"); break;
     case "addToolMaster":   res = addM(p.sId, [p.name, p.tag]); break;
     case "addStaff":        res = addS(p.sId, p.dept, p.name, p.companyCode); break;
+    // switch文の中にケースを追加
+    case "deleteTool": res = deleteRow(p.sId, "道具名簿", p.name); break;
     default:                res = {success:false};
   }
   return ContentService.createTextOutput(JSON.stringify(res)).setMimeType(ContentService.MimeType.JSON);
@@ -30,8 +32,17 @@ function handleLogin(id, pw) {
   return { success: false, message: "認証失敗" };
 }
 
-function getD(sId, n) { return SpreadsheetApp.openById(sId).getSheetByName(n).getDataRange().getValues(); }
-
+function getD(sId, n) { 
+  try {
+    const ss = SpreadsheetApp.openById(sId);
+    const sheet = ss.getSheetByName(n);
+    if (!sheet) return [["エラー: シート '" + n + "' がありません"]];
+    return sheet.getDataRange().getValues(); 
+  } catch (e) {
+    // IDが間違っている場合や権限がない場合、ここでエラーをキャッチして返します
+    return [["エラー: スプレッドシートが開けません", e.toString()]];
+  }
+}
 function addM(sId, row) { 
   SpreadsheetApp.openById(sId).getSheetByName("道具名簿").appendRow(row); 
   return { success: true, message: "登録完了" }; // オブジェクトで返す
@@ -40,4 +51,17 @@ function addM(sId, row) {
 function addS(sId, dept, name, comp) {
   SpreadsheetApp.openById(sId).getSheetByName("社員名簿").appendRow([new Date(), dept, name, comp]);
   return { success: true, message: "社員登録完了" }; // オブジェクトで返す
+}
+
+// 削除用関数（共通）
+function deleteRow(sId, sheetName, key) {
+  const sheet = SpreadsheetApp.openById(sId).getSheetByName(sheetName);
+  const data = sheet.getDataRange().getValues();
+  for (let i = data.length - 1; i >= 0; i--) {
+    if (data[i][0] == key) { // 1列目が一致したら削除
+      sheet.deleteRow(i + 1);
+      return { success: true, message: "削除しました" };
+    }
+  }
+  return { success: false, message: "見つかりませんでした" };
 }

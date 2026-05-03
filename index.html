@@ -187,7 +187,12 @@
   async function loadMasterData() {
     const res = await callGas({ action: "fetchToolMaster", sId: session.sId });
     const d = await res.json();
-    document.getElementById('masterTableBody').innerHTML = (d||[]).map(r => `<tr><td>${r[0]}</td><td><code>${r[1]}</code></td></tr>`).join('');
+    document.getElementById('masterTableBody').innerHTML = (d||[]).map(r => `
+    <tr>
+        <td>${r[0]}</td>
+        <td><code>${r[1]}</code></td>
+        <td><button class="btn btn-sm btn-outline-danger" onclick="deleteToolMaster('${r[0]}')">削除</button></td>
+    </tr>`).join('');
   }
 
   async function registerToolMaster() {
@@ -197,7 +202,12 @@
     alert(await res.text());
     loadMasterData();
   }
-
+    async function deleteToolMaster(name) {
+    if(!confirm(name + " を削除しますか？")) return;
+    const res = await callGas({ action: "deleteTool", name: name, sId: session.sId });
+    alert((await res.json()).message);
+    loadMasterData();
+    }
   async function loadStaffData() {
     const res = await callGas({ action: "fetchStaff", sId: session.sId });
     const d = await res.json();
