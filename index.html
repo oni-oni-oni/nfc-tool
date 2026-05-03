@@ -195,13 +195,35 @@
     </tr>`).join('');
   }
 
-  async function registerToolMaster() {
-    const n = document.getElementById('newToolName').value, t = document.getElementById('newTagId').value;
-    if(!n || !t) return alert("入力してください");
-    const res = await callGas({ action: "addToolMaster", name: n, tag: t, sId: session.sId });
-    alert(await res.text());
-    loadMasterData();
-  }
+    async function registerToolMaster() {
+    const n = document.getElementById('newToolName').value;
+    if (!n) return alert("道具名を入力してください");
+
+    try {
+        // 1. スキャン開始（ブラウザのNFC機能を呼び出す）
+        const ndef = new NDEFReader();
+        await ndef.scan();
+        alert("タグ（タブ）をスマホにかざしてください...");
+
+        ndef.onreading = async (event) => {
+        const serialNumber = event.serialNumber; // タグ固有のIDを取得
+        
+        // 2. 取得したIDと共にGASへ送信
+        const res = await callGas({ 
+            action: "addToolMaster", 
+            name: n, 
+            tag: serialNumber, // スキャンしたIDを使用
+            sId: session.sId 
+        });
+        
+        const result = await res.json();
+        alert(result.message);
+        loadMasterData(); // 一覧を更新
+        };
+    } catch (e) {
+        alert("スキャンに失敗しました。NFCが有効か確認してください: " + e);
+    }
+    }
     async function deleteToolMaster(name) {
     if(!confirm(name + " を削除しますか？")) return;
     const res = await callGas({ action: "deleteTool", name: name, sId: session.sId });
