@@ -7,10 +7,11 @@ function doGet() {
 function doPost(e) {
   const params = JSON.parse(e.postData.contents);
   const action = params.action;
-  const MASTER_SHEET_ID = '1_z9SacqBnkhj-VeD5EQhJHiAj38l2H-M60j_ikgGYbA';
+  const MASTER_SHEET_ID = '1_z9SacqBnkhj-VeD5EQhJHiAj38l2H-M60j_ikgGYbA'; // 固定
   const ss = SpreadsheetApp.openById(MASTER_SHEET_ID);
 
   try {
+    // ログイン処理
     if (action === "login") {
       const sheet = ss.getSheetByName('社員名簿');
       const data = sheet.getDataRange().getValues();
@@ -22,18 +23,21 @@ function doPost(e) {
       return sendJson({ success: false });
     }
 
+    // 道具一覧の取得
     if (action === "fetchItems") {
       const sheet = ss.getSheetByName('道具名簿');
-      return sendJson(sheet.getDataRange().getValues().slice(1));
+      const data = sheet.getDataRange().getValues().slice(1);
+      return sendJson(data);
     }
 
+    // 道具の保存（写真含む）
     if (action === "saveItem") {
       const sheet = ss.getSheetByName('道具名簿');
       const data = sheet.getDataRange().getValues();
       let rowIndex = -1;
       for(let i=0; i<data.length; i++) { if(data[i][1] === params.tag) rowIndex = i + 1; }
 
-      let imageUrl = params.existingUrl || "";
+      let imageUrl = "";
       if (params.imageBlob && params.imageBlob.startsWith("data:image")) {
         const folder = DriveApp.getFolderById(params.folderId);
         const blob = Utilities.newBlob(Utilities.base64Decode(params.imageBlob.split(',')[1]), "image/jpeg", params.name + ".jpg");
@@ -44,17 +48,11 @@ function doPost(e) {
 
       if (rowIndex > 0) {
         sheet.getRange(rowIndex, 1, 1, 4).setValues([[params.name, params.tag, imageUrl, params.remarks]]);
-        return ContentService.createTextOutput("更新しました");
+        return ContentService.createTextOutput("更新完了");
       } else {
         sheet.appendRow([params.name, params.tag, imageUrl, params.remarks]);
-        return ContentService.createTextOutput("新規登録しました");
+        return ContentService.createTextOutput("新規登録完了");
       }
-    }
-
-    if (action === "regEmployee") {
-      const sheet = ss.getSheetByName('社員名簿');
-      sheet.appendRow([params.newId, params.newPw, params.newSId, "", "C001", params.newFolderId]);
-      return ContentService.createTextOutput("社員を登録しました");
     }
   } catch (err) {
     return ContentService.createTextOutput("Error: " + err.message);

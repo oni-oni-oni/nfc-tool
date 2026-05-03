@@ -5,135 +5,126 @@
     <title>道具管理システム</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background-color: #f4f7f6; padding-bottom: 70px; }
-        .screen { display: none; }
+        body { background-color: #f8f9fa; }
+        .view { display: none; }
         .active { display: block; }
-        .nav-bar { position: fixed; bottom: 0; width: 100%; background: #fff; display: flex; justify-content: space-around; padding: 10px 0; border-top: 1px solid #ddd; z-index: 100; }
-        img.pic { width: 60px; height: 60px; object-fit: cover; border-radius: 8px; }
+        .card { border-radius: 15px; border: none; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .nav-bar { position: fixed; bottom: 0; width: 100%; background: white; display: flex; justify-content: space-around; padding: 12px; border-top: 1px solid #ddd; }
+        img.thumb { width: 60px; height: 60px; object-fit: cover; border-radius: 8px; }
     </style>
 </head>
 <body>
 
-<div class="container py-3" id="main-container">
-    <!-- 1. ログイン -->
-    <div id="scr-login" class="screen active mt-5 text-center">
-        <div class="card p-4 shadow-sm border-0">
-            <h4 class="mb-4">System Login</h4>
-            <input type="text" id="in-user" class="form-control mb-3" placeholder="ユーザーID">
-            <input type="password" id="in-pass" class="form-control mb-4" placeholder="パスワード">
-            <button class="btn btn-primary w-100" onclick="performAuth()">ログイン</button>
+<div class="container py-4">
+    <!-- ログイン画面（初期表示） -->
+    <div id="view-login" class="view active mt-5">
+        <div class="col-md-6 mx-auto card p-4 text-center">
+            <h3 class="mb-4 text-primary">道具管理ログイン</h3>
+            <input type="text" id="user-id" class="form-control mb-3" placeholder="ユーザーID">
+            <input type="password" id="user-pw" class="form-control mb-4" placeholder="パスワード">
+            <button class="btn btn-primary w-100 py-2" onclick="login()">ログイン</button>
         </div>
     </div>
 
-    <!-- 2. 一括スキャン -->
-    <div id="scr-scan" class="screen mt-3">
-        <h5 class="fw-bold mb-3">📡 一括スキャン</h5>
-        <button class="btn btn-info w-100 mb-3 py-3 text-white fw-bold" onclick="launchNfcScan()">スキャン開始</button>
-        <div id="nfc-log" class="small text-muted mb-2 text-center">待機中...</div>
-        <ul id="scan-list" class="list-group shadow-sm"></ul>
-    </div>
-
-    <!-- 3. 名簿・登録 -->
-    <div id="scr-list" class="screen mt-3">
-        <div class="card p-3 mb-4 border-0 shadow-sm">
-            <h6 id="form-title" class="fw-bold">➕ 道具の登録</h6>
-            <div class="row g-2">
-                <div class="col-8"><input type="text" id="tool-name" class="form-control" placeholder="道具名"></div>
-                <div class="col-4"><button class="btn btn-secondary w-100" onclick="getSingleNfc()">タグ</button></div>
-            </div>
-            <input type="text" id="tool-tag" class="form-control my-2 bg-light" readonly placeholder="タグID">
-            <input type="file" id="tool-img" class="form-control mb-2" accept="image/*" capture="environment">
-            <button class="btn btn-success w-100" id="btn-save" onclick="apiSaveItem()">名簿に保存</button>
+    <!-- メイン一覧画面 -->
+    <div id="view-list" class="view">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="fw-bold">📋 道具一覧</h5>
+            <button class="btn btn-sm btn-outline-secondary" onclick="location.reload()">ログアウト</button>
         </div>
         <div class="table-responsive">
-            <table class="table table-hover bg-white rounded shadow-sm">
-                <tbody id="tool-list-body"></tbody>
+            <table class="table bg-white rounded shadow-sm">
+                <tbody id="list-body"></tbody>
             </table>
+        </div>
+    </div>
+
+    <!-- 登録・編集画面 -->
+    <div id="view-edit" class="view">
+        <div class="card p-3">
+            <h5 class="fw-bold mb-3">➕ 道具の登録・編集</h5>
+            <input type="text" id="edit-name" class="form-control mb-2" placeholder="道具名">
+            <div class="input-group mb-2">
+                <input type="text" id="edit-tag" class="form-control bg-light" readonly placeholder="タグID">
+                <button class="btn btn-secondary" onclick="scanNfc()">タグ読込</button>
+            </div>
+            <input type="text" id="edit-rem" class="form-control mb-3" placeholder="備考">
+            <input type="file" id="edit-img" class="form-control mb-3" accept="image/*" capture="environment">
+            <button class="btn btn-success w-100 py-2" onclick="save()">名簿に保存</button>
         </div>
     </div>
 </div>
 
-<nav class="nav-bar" id="bottom-nav" style="display:none;">
-    <a href="javascript:void(0)" onclick="navTo('scan')">📡 スキャン</a>
-    <a href="javascript:void(0)" onclick="navTo('list')">📋 名簿</a>
-    <a href="javascript:location.reload()">🚪 終了</a>
+<nav id="nav" class="nav-bar" style="display:none;">
+    <a href="javascript:show('list')">📋 一覧</a>
+    <a href="javascript:show('edit')">➕ 登録</a>
 </nav>
 
 <script>
-    // デプロイURLを「新しいデプロイ」のものに更新してください
-    const APP_URL = "ここに新しいデプロイURLを貼る";
-    let userSession = {};
+    // 【重要】デプロイ後のURLをここに入れてください
+    const URL = "ここにデプロイ後のURLを貼る";
+    let session = {};
 
-    async function apiCall(data) {
-        return await fetch(APP_URL, { method: "POST", body: JSON.stringify(data) });
+    async function call(payload) {
+        return await fetch(URL, { method: "POST", body: JSON.stringify(payload) });
     }
 
-    async function performAuth() {
-        const id = document.getElementById('in-user').value;
-        const pw = document.getElementById('in-pass').value;
-        const res = await apiCall({ action: "login", id, pw });
+    async function login() {
+        const id = document.getElementById('user-id').value;
+        const pw = document.getElementById('user-pw').value;
+        const res = await call({ action: "login", id, pw });
         const data = await res.json();
         if (data.success) {
-            userSession = data;
-            document.getElementById('bottom-nav').style.display = "flex";
-            navTo('list');
-        } else { alert("失敗"); }
+            session = data;
+            document.getElementById('nav').style.display = "flex";
+            show('list');
+        } else { alert("IDまたはパスワードが違います"); }
     }
 
-    function navTo(scr) {
-        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-        document.getElementById('scr-' + scr).classList.add('active');
-        if (scr === 'list') apiFetchItems();
+    function show(v) {
+        document.querySelectorAll('.view').forEach(e => e.classList.remove('active'));
+        document.getElementById('view-' + v).classList.add('active');
+        if (v === 'list') load();
     }
 
-    async function launchNfcScan() {
-        if (!('NDEFReader' in window)) return alert("NFC非対応");
-        const reader = new NDEFReader(); await reader.scan();
-        document.getElementById('nfc-log').innerText = "スキャン中...";
-        reader.onreading = e => {
-            const li = document.createElement('li');
-            li.className = "list-group-item d-flex justify-content-between";
-            li.innerHTML = `<span>ID: ${e.serialNumber}</span><span class="badge bg-success">検知</span>`;
-            document.getElementById('scan-list').prepend(li);
-        };
-    }
-
-    async function apiFetchItems() {
-        const res = await apiCall({ action: "fetchItems" });
+    async function load() {
+        const res = await call({ action: "fetchItems" });
         const data = await res.json();
-        document.getElementById('tool-list-body').innerHTML = data.map(t => `
-            <tr>
-                <td><img src="${t[2] || ''}" class="pic"></td>
-                <td><b>${t[0]}</b><br><small>${t[1]}</small></td>
-                <td><button class="btn btn-sm btn-outline-primary" onclick="setEdit('${t[1]}','${t[0]}')">編</button></td>
+        document.getElementById('list-body').innerHTML = data.map(t => `
+            <tr onclick="setEdit('${t[1]}','${t[0]}','${t[3]}')">
+                <td><img src="${t[2] || ''}" class="thumb"></td>
+                <td><b>${t[0]}</b><br><small class="text-muted">${t[1]}</small></td>
             </tr>
         `).join('');
     }
 
-    async function apiSaveItem() {
-        const file = document.getElementById('tool-img').files[0];
+    async function save() {
+        const file = document.getElementById('edit-img').files[0];
         let base64 = "";
         if (file) base64 = await new Promise(r => { const rd = new FileReader(); rd.onload = e => r(e.target.result); rd.readAsDataURL(file); });
-        const res = await apiCall({
+        
+        const res = await call({
             action: "saveItem",
-            folderId: userSession.folderId,
-            name: document.getElementById('tool-name').value,
-            tag: document.getElementById('tool-tag').value,
+            folderId: session.folderId,
+            name: document.getElementById('edit-name').value,
+            tag: document.getElementById('edit-tag').value,
+            remarks: document.getElementById('edit-rem').value,
             imageBlob: base64
         });
         alert(await res.text());
-        apiFetchItems();
+        show('list');
     }
 
-    function setEdit(tag, name) {
-        document.getElementById('tool-tag').value = tag;
-        document.getElementById('tool-name').value = name;
-        window.scrollTo(0,0);
+    function setEdit(tag, name, rem) {
+        document.getElementById('edit-tag').value = tag;
+        document.getElementById('edit-name').value = name;
+        document.getElementById('edit-rem').value = rem || "";
+        show('edit');
     }
 
-    async function getSingleNfc() {
-        const reader = new NDEFReader(); await reader.scan();
-        reader.onreading = e => { document.getElementById('tool-tag').value = e.serialNumber; };
+    async function scanNfc() {
+        const ndef = new NDEFReader(); await ndef.scan();
+        ndef.onreading = e => { document.getElementById('edit-tag').value = e.serialNumber; };
     }
 </script>
 </body>
