@@ -100,12 +100,17 @@
   let db = [];
 
   // 通信共通関数
-  async function callGas(data) {
-    return fetch(GAS_URL, {
-      method: "POST",
-      body: JSON.stringify(data)
-    });
-  }
+ async function callGas(data) {
+  return fetch(GAS_URL, {
+    method: "POST", // GAS側で doPost(e) を実行させる
+    mode: "cors",   // CORSを許可
+    redirect: "follow", // 重要：Googleのリダイレクトを追跡する
+    body: JSON.stringify(data),
+    headers: {
+      "Content-Type": "text/plain;charset=utf-8" // GASが受け取りやすい形式
+    }
+  });
+}
 
   // 1. ログイン処理
   async function handleLogin() {
