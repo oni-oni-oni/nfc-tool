@@ -7,109 +7,126 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
   <style>
-    body { background-color: #f8f9fa; font-family: sans-serif; padding-bottom: 70px; }
-    .container-mobile { max-width: 500px; margin: auto; padding: 15px; }
+    :root { --primary-green: #198754; --bg-gray: #f8f9fa; }
+    body { background-color: var(--bg-gray); font-family: sans-serif; margin: 0; padding: 0; }
     
-    /* ログイン画面専用 */
-    #view-login { min-height: 90vh; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-    .login-card { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); width: 100%; }
+    /* 画面切り替えの鉄則：最初は全部消す */
+    .view-section { display: none !important; }
+    /* activeがついたものだけ表示 */
+    .view-section.active { display: block !important; }
 
-    /* メイン画面のカードUI */
-    .view-section { display: none; }
-    .active-view { display: block !important; }
-    .app-card { background: white; border-radius: 20px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; }
+    .container-mobile { max-width: 500px; margin: auto; padding: 20px 15px 100px 15px; }
     
-    /* ボトムナビゲーション */
-    .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; display: flex; justify-content: space-around; padding: 10px 0; border-top: 1px solid #eee; z-index: 1000; }
-    .nav-item { text-align: center; color: #666; text-decoration: none; font-size: 0.75rem; flex: 1; border: none; background: none; }
-    .nav-item i { display: block; font-size: 1.5rem; margin-bottom: 2px; }
-    .nav-item.active { color: #0d6efd; fw-bold; }
+    /* ログインカード */
+    .login-container { height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+    .login-card { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); width: 100%; }
 
-    /* 登録ボタン */
-    .btn-register { background-color: #198754; color: white; padding: 15px; border-radius: 12px; font-weight: bold; font-size: 1.2rem; width: 100%; border: none; }
-    .btn-scan { background-color: #6c757d; color: white; }
-    
-    .table-title { font-weight: bold; color: #666; margin-bottom: 10px; padding-left: 5px; }
-    .status-badge { padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; }
+    /* メインUIのカード */
+    .app-card { background: white; border-radius: 20px; padding: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 25px; }
+    .form-label { font-weight: bold; color: #333; margin-bottom: 8px; }
+    .form-control-lg { border-radius: 12px; border: 1px solid #dee2e6; background-color: #fdfdfd; }
+
+    /* ボタン類 */
+    .btn-register { background-color: var(--primary-green); color: white; padding: 16px; border-radius: 15px; font-weight: bold; font-size: 1.3rem; width: 100%; border: none; margin-top: 10px; }
+    .btn-scan { background-color: #6c757d; color: white; border-radius: 0 12px 12px 0; font-weight: bold; }
+    .scan-input { border-radius: 12px 0 0 12px !important; }
+
+    /* 下部ナビゲーション */
+    .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; display: none; justify-content: space-around; padding: 12px 0; border-top: 1px solid #eee; z-index: 2000; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); }
+    .nav-item { text-align: center; color: #999; text-decoration: none; font-size: 0.7rem; flex: 1; border: none; background: none; outline: none; }
+    .nav-item i { display: block; font-size: 1.6rem; margin-bottom: 3px; }
+    .nav-item.active { color: #0d6efd; font-weight: bold; }
+
+    /* 一覧の見た目 */
+    .table-title { font-weight: bold; color: #888; margin-bottom: 12px; font-size: 1.1rem; }
+    .table-container { background: white; border-radius: 15px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.03); }
+    .table thead { background: #fdfdfd; }
+    .btn-del { color: #dc3545; border: 1px solid #ffc1c1; background: white; border-radius: 6px; padding: 2px 8px; font-size: 0.8rem; }
   </style>
 </head>
 <body>
 
-<div class="container-mobile">
-  
-  <div id="view-login" class="view-section active-view">
-    <div class="login-card text-center">
-      <h3 class="fw-bold mb-4">🔑 システムログイン</h3>
-      <input type="text" id="userId" class="form-control form-control-lg mb-3" placeholder="ユーザーID">
-      <input type="password" id="userPw" class="form-control form-control-lg mb-4" placeholder="パスワード">
-      <button class="btn btn-primary w-100 p-3 fw-bold" style="border-radius:12px;" onclick="handleLogin()">ログイン</button>
-      <p id="loginMsg" class="text-danger mt-3 small"></p>
+  <!-- 1. ログイン画面セクション -->
+  <div id="view-login" class="view-section active">
+    <div class="login-container">
+      <div class="login-card text-center">
+        <h3 class="fw-bold mb-4">🔑 システムログイン</h3>
+        <input type="text" id="userId" class="form-control form-control-lg mb-3" placeholder="ユーザーID">
+        <input type="password" id="userPw" class="form-control form-control-lg mb-4" placeholder="パスワード">
+        <button class="btn btn-primary w-100 p-3 fw-bold" style="border-radius:15px;" onclick="handleLogin()">ログイン</button>
+        <p id="loginMsg" class="text-danger mt-3 small"></p>
+      </div>
     </div>
   </div>
 
+  <!-- 2. メイン画面セクション (初期は完全に非表示) -->
   <div id="view-main" class="view-section">
-    <h5 class="fw-bold mb-3" id="displayCompany"></h5>
+    <div class="container-mobile">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h5 class="fw-bold text-secondary mb-0" id="displayCompany"></h5>
+      </div>
 
-    <div id="sec-register" class="sub-view active-view">
-      <div class="app-card">
-        <h5 class="fw-bold mb-4"><i class="bi bi-plus-lg me-2"></i>道具管理</h5>
-        <div class="mb-3">
-          <label class="small fw-bold mb-1">道具名</label>
-          <input type="text" id="newToolName" class="form-control form-control-lg" placeholder="例：インパクトレンチ A">
-        </div>
-        <div class="mb-4">
-          <label class="small fw-bold mb-1">タグID</label>
-          <div class="input-group">
-            <input type="text" id="tagIdDisplay" class="form-control form-control-lg" placeholder="自動入力されます">
-            <button class="btn btn-scan px-4" onclick="startNFCScan()">スキャン</button>
+      <!-- 登録コンテンツ -->
+      <div id="sec-register" class="sub-view">
+        <div class="app-card">
+          <h4 class="fw-bold mb-4"><i class="bi bi-plus-lg me-2"></i>道具管理</h4>
+          <div class="mb-3">
+            <label class="form-label">道具名</label>
+            <input type="text" id="newToolName" class="form-control form-control-lg" placeholder="例：インパクトレンチ A">
           </div>
+          <div class="mb-4">
+            <label class="form-label">タグID</label>
+            <div class="input-group">
+              <input type="text" id="tagIdDisplay" class="form-control form-control-lg scan-input" placeholder="スキャンしてください" readonly>
+              <button class="btn btn-scan px-4" onclick="startNFCScan()">スキャン</button>
+            </div>
+          </div>
+          <button class="btn-register shadow" onclick="finalRegister()">名簿に登録</button>
         </div>
-        <button class="btn-register shadow-sm" onclick="finalRegister()">名簿に登録</button>
+
+        <div class="table-title">登録済み道具一覧</div>
+        <div class="table-container">
+          <table class="table mb-0">
+            <thead><tr class="small text-muted"><th>道具名</th><th>タグID</th><th class="text-end">操作</th></tr></thead>
+            <tbody id="masterTableBody" class="small"></tbody>
+          </table>
+        </div>
       </div>
 
-      <div class="table-title">登録済み道具一覧</div>
-      <div class="app-card p-0 overflow-hidden">
-        <table class="table mb-0">
-          <thead class="table-light small">
-            <tr><th>道具名</th><th>タグID</th><th class="text-end">操作</th></tr>
-          </thead>
-          <tbody id="masterTableBody" class="small"></tbody>
-        </table>
+      <!-- 稼働状況コンテンツ -->
+      <div id="sec-list" class="sub-view" style="display:none;">
+        <div class="table-title">稼働状況一覧</div>
+        <div class="table-container">
+          <table class="table mb-0">
+            <thead class="table-dark"><tr><th>道具名</th><th>場所</th><th>状況</th></tr></thead>
+            <tbody id="tbd"></tbody>
+          </table>
+        </div>
       </div>
-    </div>
 
-    <div id="sec-list" class="sub-view" style="display:none;">
-      <div class="table-title">稼働状況</div>
-      <div class="app-card p-0 overflow-hidden">
-        <table class="table mb-0">
-          <thead class="table-dark small"><tr><th>道具名</th><th>場所</th><th>状況</th></tr></thead>
-          <tbody id="tbd" class="small"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <div id="sec-staff" class="sub-view" style="display:none;">
-      <div class="app-card">
-        <h6 class="fw-bold mb-3">社員追加</h6>
-        <input type="text" id="deptName" class="form-control mb-2" placeholder="部署名">
-        <input type="text" id="staffName" class="form-control mb-3" placeholder="氏名">
-        <button class="btn btn-primary w-100" onclick="registerStaff()">追加</button>
-      </div>
-      <div class="app-card p-0">
-        <table class="table mb-0"><tbody id="staffTbd" class="small"></tbody></table>
+      <!-- 社員設定コンテンツ -->
+      <div id="sec-staff" class="sub-view" style="display:none;">
+        <div class="app-card">
+          <h5 class="fw-bold mb-3">社員登録</h5>
+          <input type="text" id="deptName" class="form-control mb-2" placeholder="部署名">
+          <input type="text" id="staffName" class="form-control mb-3" placeholder="氏名">
+          <button class="btn btn-primary w-100 p-2" style="border-radius:10px;" onclick="registerStaff()">追加する</button>
+        </div>
+        <div class="table-container">
+          <table class="table mb-0"><tbody id="staffTbd"></tbody></table>
+        </div>
       </div>
     </div>
   </div>
 
-</div>
-
-<nav class="bottom-nav" id="app-nav" style="display:none;">
-  <button class="nav-item" onclick="switchTab('scan')"><i class="bi bi-radar"></i>スキャン</button>
-  <button class="nav-item" onclick="switchTab('list')"><i class="bi bi-clipboard-data"></i>一覧</button>
-  <button class="nav-item" onclick="switchTab('staff')"><i class="bi bi-person-fill"></i>社員</button>
-  <button class="nav-item active" onclick="switchTab('register')"><i class="bi bi-plus-square-fill"></i>登録</button>
-  <button class="nav-item" onclick="location.reload()"><i class="bi bi-door-open-fill"></i>終了</button>
-</nav>
+  <!-- ボトムナビゲーション -->
+  <nav class="bottom-nav" id="app-nav">
+    <button class="nav-item" onclick="switchTab('list', this)"><i class="bi bi-radar"></i>スキャン</button>
+    <button class="nav-item" onclick="switchTab('list', this)"><i class="bi bi-clipboard-data"></i>一覧</button>
+    <button class="nav-item" onclick="switchTab('staff', this)"><i class="bi bi-person-fill"></i>社員</button>
+    <button class="nav-item active" onclick="switchTab('register', this)"><i class="bi bi-plus-square-fill"></i>登録</button>
+    <button class="nav-item" onclick="location.reload()"><i class="bi bi-door-open-fill"></i>終了</button>
+  </nav>
 
 <script>
   const GAS_URL = "https://script.google.com/macros/s/AKfycbz_aAZvAV3kRKlCrhtczqHj4CbdtKUDykMqN5RxZfk2-CHQ392VYcl7yD9wvtlgykL7YA/exec";
@@ -119,55 +136,64 @@
     const id = document.getElementById('userId').value;
     const pw = document.getElementById('userPw').value;
     const msg = document.getElementById('loginMsg');
+    if(!id || !pw) return;
     msg.innerText = "認証中...";
+
     try {
       const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "login", id: id, pw: pw }) });
       const data = await res.json();
       if (data.success) {
         session = data;
-        document.getElementById('displayCompany').innerText = "🏢 " + data.companyCode;
-        document.getElementById('view-login').classList.remove('active-view');
-        document.getElementById('view-main').classList.add('active-view');
+        document.getElementById('displayCompany').innerText = data.companyCode + " 様";
+        
+        // 【重要】ログイン画面を物理的に隠し、メインとナビを表示
+        document.getElementById('view-login').classList.remove('active');
+        document.getElementById('view-main').classList.add('active');
         document.getElementById('app-nav').style.display = "flex";
+        
         loadMasterData();
       } else { msg.innerText = data.message; }
-    } catch (e) { msg.innerText = "通信エラー"; }
+    } catch (e) { msg.innerText = "接続に失敗しました"; }
   }
 
-  function switchTab(tab) {
-    document.querySelectorAll('.sub-view').forEach(v => v.style.display = 'none');
-    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+  function switchTab(target, el) {
+    // 全サブビューを隠す
+    document.querySelectorAll('.sub-view').forEach(s => s.style.display = 'none');
+    // 指定したサブビューだけ出す
+    document.getElementById('sec-' + target).style.display = 'block';
     
-    if(tab === 'register') {
-      document.getElementById('sec-register').style.display = 'block';
-      loadMasterData();
-    } else if(tab === 'list') {
-      document.getElementById('sec-list').style.display = 'block';
-      loadToolsData();
-    } else if(tab === 'staff') {
-      document.getElementById('sec-staff').style.display = 'block';
-      loadStaffData();
-    }
-    event.currentTarget.classList.add('active');
+    // アイコンの色を切り替え
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    el.classList.add('active');
+
+    // データ再読込
+    if(target === 'register') loadMasterData();
+    if(target === 'list') loadToolsData();
+    if(target === 'staff') loadStaffData();
   }
 
   async function startNFCScan() {
     try {
+      if (!('NDEFReader' in window)) return alert("NFC非対応のブラウザです");
       const ndef = new NDEFReader();
       await ndef.scan();
-      alert("タグをかざしてください");
+      alert("タグをスマホにかざしてください");
       ndef.onreading = event => {
         document.getElementById('tagIdDisplay').value = event.serialNumber;
       };
-    } catch (e) { alert("NFC非対応ブラウザです"); }
+    } catch (e) { alert("NFCエラー: " + e); }
   }
 
   async function finalRegister() {
     const n = document.getElementById('newToolName').value;
     const t = document.getElementById('tagIdDisplay').value;
-    if(!n || !t) return alert("道具名とタグIDが必要です");
+    if(!n || !t) return alert("道具名とタグスキャンが必要です");
+    
     const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "addToolMaster", name: n, tag: t, sId: session.sId }) });
-    alert((await res.json()).message);
+    const result = await res.json();
+    alert(result.message);
+    document.getElementById('newToolName').value = "";
+    document.getElementById('tagIdDisplay').value = "";
     loadMasterData();
   }
 
@@ -175,16 +201,32 @@
     const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "fetchToolMaster", sId: session.sId }) });
     const d = await res.json();
     document.getElementById('masterTableBody').innerHTML = (d||[]).map(r => `
-      <tr><td>${r[0]}</td><td>${r[1]}</td><td class="text-end"><button class="btn btn-outline-danger btn-sm" onclick="deleteTool('${r[0]}')">削除</button></td></tr>
-    `).join('');
+      <tr class="align-middle">
+        <td><strong>${r[0]}</strong></td>
+        <td class="text-muted" style="font-size:0.75rem;">${r[1]}</td>
+        <td class="text-end"><button class="btn-del" onclick="deleteTool('${r[0]}')">削除</button></td>
+      </tr>`).join('');
   }
 
-  // 他の通信関数（loadToolsData, loadStaffDataなど）は前回のロジックと同じです
+  async function deleteTool(name) {
+    if(!confirm(name + " を削除しますか？")) return;
+    await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "deleteTool", name: name, sId: session.sId }) });
+    loadMasterData();
+  }
+
   async function loadToolsData() {
     const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "fetchData", sId: session.sId }) });
     const d = await res.json();
     document.getElementById('tbd').innerHTML = d.slice(1).map(x => `
-      <tr><td>${x[1]}</td><td>${x[2]}</td><td><span class="status-badge bg-info">${x[4]}</span></td></tr>
+      <tr><td>${x[1]}</td><td>${x[2]}</td><td><span class="badge bg-primary">${x[4]}</span></td></tr>
+    `).join('');
+  }
+
+  async function loadStaffData() {
+    const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "fetchStaff", sId: session.sId }) });
+    const d = await res.json();
+    document.getElementById('staffTbd').innerHTML = (d||[]).map(r => `
+      <tr><td>${r[1]}</td><td>${r[2]}</td><td class="text-end"><button class="btn-del" onclick="delStaff('${r[2]}')">削除</button></td></tr>
     `).join('');
   }
 </script>
