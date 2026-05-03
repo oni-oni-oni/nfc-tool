@@ -6,75 +6,81 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body { background-color: #f8f9fa; padding-bottom: 80px; }
-        .card-custom { border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); padding: 20px; margin-top: 15px; }
-        .nav-fixed { position: fixed; bottom: 0; width: 100%; background: white; border-top: 1px solid #ddd; display: flex; justify-content: space-around; padding: 12px 0; z-index: 1000; }
         .view-section { display: none; }
         .active-view { display: block; }
-        img.thumb { width: 50px; height: 50px; object-fit: cover; border-radius: 5px; background: #eee; }
+        .nav-fixed { position: fixed; bottom: 0; width: 100%; background: white; border-top: 1px solid #ddd; display: flex; justify-content: space-around; padding: 12px 0; z-index: 1000; }
+        img.thumb { width: 50px; height: 50px; object-fit: cover; border-radius: 5px; }
     </style>
 </head>
 <body>
 
 <div class="container" id="app">
-    <!-- ログイン画面 -->
+    <!-- ログイン -->
     <div id="view-login" class="view-section active-view mt-5 text-center">
-        <div class="card card-custom border-0">
-            <h3 class="fw-bold mb-4">🔑 Login</h3>
-            <input type="text" id="userId" class="form-control mb-3" placeholder="ユーザーID">
-            <input type="password" id="userPw" class="form-control mb-4" placeholder="パスワード">
-            <button class="btn btn-primary w-100 py-3" onclick="handleLogin()">ログイン</button>
-            <p id="loginMsg" class="text-danger mt-3 small"></p>
+        <div class="card p-4 border-0 shadow-sm">
+            <h3>🔑 Login</h3>
+            <input type="text" id="userId" class="form-control my-3" placeholder="ユーザーID">
+            <input type="password" id="userPw" class="form-control mb-3" placeholder="パスワード">
+            <button class="btn btn-primary w-100 py-2" onclick="handleLogin()">ログイン</button>
         </div>
     </div>
 
-    <!-- 登録・名簿画面 -->
-    <div id="view-register" class="view-section">
-        <div class="card card-custom border-0 mb-4">
-            <h5 class="fw-bold">➕ 道具の登録・編集</h5>
+    <!-- 一括スキャン -->
+    <div id="view-scan" class="view-section mt-4">
+        <h5 class="fw-bold">📡 一括スキャン（稼働更新）</h5>
+        <button class="btn btn-info w-100 my-3 py-3" onclick="startBulkScan()">スキャン開始</button>
+        <div id="scanStatus" class="alert alert-secondary text-center">待機中...</div>
+        <ul id="scanResults" class="list-group shadow-sm"></ul>
+    </div>
+
+    <!-- 道具名簿（登録・編集・一覧） -->
+    <div id="view-register" class="view-section mt-4">
+        <div class="card p-3 mb-4 border-0 shadow-sm">
+            <h5 id="regTitle">➕ 道具の登録</h5>
             <div class="row g-2">
                 <div class="col-8"><input type="text" id="regName" class="form-control" placeholder="道具名"></div>
-                <div class="col-4"><button class="btn btn-secondary w-100" onclick="scanSingleTag()">スキャン</button></div>
+                <div class="col-4"><button class="btn btn-secondary w-100" onclick="scanSingleTag()">タグ取得</button></div>
             </div>
-            <input type="text" id="regTag" class="form-control my-2 bg-light" readonly placeholder="タグID (スキャンしてください)">
-            <input type="text" id="regRemarks" class="form-control mb-2" placeholder="備考・メモ">
+            <input type="text" id="regTag" class="form-control my-2 bg-light" readonly placeholder="タグID">
+            <input type="text" id="regRemarks" class="form-control mb-2" placeholder="備考">
             <input type="file" id="regImage" class="form-control mb-2" accept="image/*" capture="environment">
             <button class="btn btn-success w-100" id="btnReg" onclick="registerTool()">名簿に保存</button>
         </div>
         <div class="table-responsive">
-            <table class="table table-hover align-middle bg-white rounded shadow-sm">
-                <thead class="table-light"><tr><th>写真</th><th>道具名</th><th>タグID</th><th>操作</th></tr></thead>
-                <tbody id="toolMasterTbd"></tbody>
+            <table class="table table-hover bg-white rounded shadow-sm">
+                <thead><tr><th>写真</th><th>道具名</th><th>操作</th></tr></thead>
+                <tbody id="toolTableBody"></tbody>
             </table>
         </div>
     </div>
-    
-    <div id="view-scan" class="view-section"><div class="p-5 text-center">スキャン画面 (実装中)</div></div>
-    <div id="view-list" class="view-section"><div class="p-5 text-center">一覧画面 (実装中)</div></div>
+
+    <!-- 社員登録設定 -->
+    <div id="view-setting" class="view-section mt-4">
+        <div class="card p-3 border-0 shadow-sm">
+            <h5>⚙ 社員登録設定</h5>
+            <input type="text" id="newEmpId" class="form-control my-2" placeholder="新ID">
+            <input type="text" id="newEmpPw" class="form-control my-2" placeholder="パスワード">
+            <input type="text" id="newEmpFolder" class="form-control my-2" placeholder="GoogleDriveフォルダID">
+            <button class="btn btn-dark w-100" onclick="registerEmployee()">社員を追加</button>
+        </div>
+    </div>
 </div>
 
 <nav class="nav-fixed" id="mainNav" style="display:none;">
-    <a href="#" onclick="switchView('scan')">📡</a>
-    <a href="#" onclick="switchView('list')">📋</a>
-    <a href="#" onclick="switchView('register')">➕</a>
-    <a href="#" onclick="location.reload()">🚪</a>
+    <a href="#" onclick="switchView('scan')">📡 スキャン</a>
+    <a href="#" onclick="switchView('register')">📋 名簿</a>
+    <a href="#" onclick="switchView('setting')">⚙ 設定</a>
+    <a href="#" onclick="location.reload()">🚪 Exit</a>
 </nav>
 
 <script>
-// 1. URLを最新に更新
     const GAS_URL = "https://script.google.com/macros/s/AKfycbz_aAZvAV3kRKlCrhtczqHj4CbdtKUDykMqN5RxZfk2-CHQ392VYcl7yD9wvtlgykL7YA/exec";
-    let session = { sId: "", folderId: "", cCode: "" };
+    let session = {};
 
-    // 2. この下の「window.onload」や「loadToolsData()」といった
-    // 自動で実行されるコードをすべて削除してください。
-    // （ボタンを押したときだけ動く handleLogin などだけ残す）
-
-    async function callGas(p) { 
-        return await fetch(GAS_URL, { method: "POST", body: JSON.stringify(p) }); 
-    }
+    async function callGas(p) { return await fetch(GAS_URL, { method: "POST", body: JSON.stringify(p) }); }
 
     async function handleLogin() {
-        const id = document.getElementById('userId').value;
-        const pw = document.getElementById('userPw').value;
+        const id = document.getElementById('userId').value, pw = document.getElementById('userPw').value;
         const res = await callGas({ action: "login", id, pw });
         const data = await res.json();
         if (data.success) {
@@ -87,87 +93,70 @@
     function switchView(v) {
         document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active-view'));
         document.getElementById('view-' + v).classList.add('active-view');
-        if (v === 'register') loadToolMaster();
+        if (v === 'register') loadTools();
     }
 
-    async function registerTool() {
-        const btn = document.getElementById('btnReg');
-        btn.disabled = true; btn.innerText = "処理中...";
-        
-        const imgFile = document.getElementById('regImage').files[0];
-        let base64 = "";
-        if (imgFile) {
-            base64 = await new Promise(r => { 
-                const rd = new FileReader(); 
-                rd.onload = e => r(e.target.result); 
-                rd.readAsDataURL(imgFile); 
-            });
-        }
-
+    // --- NFC 一括スキャン ---
+    async function startBulkScan() {
+        if (!('NDEFReader' in window)) return alert("NFC非対応ブラウザです");
         try {
-            const res = await callGas({
-                action: "addToolMaster", 
-                sId: session.sId, 
-                folderId: session.folderId, 
-                cCode: session.cCode,
-                name: document.getElementById('regName').value, 
-                tag: document.getElementById('regTag').value,
-                remarks: document.getElementById('regRemarks').value, 
-                imageBlob: base64
-            });
-            const msg = await res.text();
-            alert(msg);
-            
-            if(msg.includes("完了")) {
-                document.getElementById('regName').value = ""; 
-                document.getElementById('regTag').value = "";
-                document.getElementById('regRemarks').value = ""; 
-                document.getElementById('regImage').value = "";
-                btn.innerText = "名簿に保存"; 
-                btn.className = "btn btn-success w-100";
-                loadToolMaster();
-            }
-        } catch (e) { alert("エラーが発生しました"); }
-        btn.disabled = false;
+            const ndef = new NDEFReader(); await ndef.scan();
+            document.getElementById('scanStatus').innerText = "スキャン中... タグをかざしてください";
+            ndef.onreading = e => {
+                const li = document.createElement('li');
+                li.className = "list-group-item d-flex justify-content-between";
+                li.innerHTML = `<span>ID: ${e.serialNumber}</span><span class="badge bg-success">検知</span>`;
+                document.getElementById('scanResults').prepend(li);
+            };
+        } catch(e) { alert("NFC起動エラー"); }
     }
 
-    async function loadToolMaster() {
-        const res = await callGas({ action: "fetchToolMaster", sId: session.sId });
-        const tools = await res.json();
-        document.getElementById('toolMasterTbd').innerHTML = tools.map(t => `
+    // --- 道具名簿 (読み込み・登録・編集) ---
+    async function loadTools() {
+        const res = await callGas({ action: "fetchToolMaster" });
+        const data = await res.json();
+        document.getElementById('toolTableBody').innerHTML = data.map(t => `
             <tr>
                 <td><img src="${t[2] || ''}" class="thumb"></td>
-                <td><b>${t[0]}</b></td>
-                <td><small class="text-muted">${t[1]}</small></td>
+                <td><b>${t[0]}</b><br><small class="text-muted">${t[1]}</small></td>
                 <td>
-                    <button class="btn btn-sm btn-outline-primary me-1" onclick="editTool('${t[1]}','${t[0]}','${t[3]}')">編集</button>
-                    <button class="btn btn-sm btn-outline-danger" onclick="deleteTool('${t[1]}')">削</button>
+                    <button class="btn btn-sm btn-outline-primary" onclick="editTool('${t[1]}','${t[0]}','${t[3]}','${t[2]}')">編</button>
                 </td>
             </tr>
         `).join('');
     }
 
-    function editTool(tag, name, rem) {
+    async function registerTool() {
+        const file = document.getElementById('regImage').files[0];
+        let base64 = "";
+        if (file) base64 = await new Promise(r => { const rd = new FileReader(); rd.onload = e => r(e.target.result); rd.readAsDataURL(file); });
+        
+        const res = await callGas({
+            action: "addToolMaster",
+            folderId: session.folderId,
+            name: document.getElementById('regName').value,
+            tag: document.getElementById('regTag').value,
+            remarks: document.getElementById('regRemarks').value,
+            imageBlob: base64
+        });
+        alert(await res.text());
+        loadTools();
+    }
+
+    function editTool(tag, name, rem, url) {
         document.getElementById('regTag').value = tag;
         document.getElementById('regName').value = name;
         document.getElementById('regRemarks').value = rem || "";
+        document.getElementById('regTitle').innerText = "📝 道具の編集";
         document.getElementById('btnReg').innerText = "上書き保存";
-        document.getElementById('btnReg').className = "btn btn-warning w-100";
         window.scrollTo(0,0);
-    }
-
-    async function deleteTool(tagId) {
-        if(!confirm("この道具を完全に削除しますか？")) return;
-        const res = await callGas({ action: "deleteToolFull", sId: session.sId, tagId: tagId });
-        alert(await res.text());
-        loadToolMaster();
     }
 
     async function scanSingleTag() {
         try {
             const ndef = new NDEFReader(); await ndef.scan();
             ndef.onreading = e => { document.getElementById('regTag').value = e.serialNumber; };
-        } catch(e) { alert("NFCスキャンに失敗しました"); }
+        } catch(e) { alert("NFCエラー"); }
     }
 </script>
 </body>
