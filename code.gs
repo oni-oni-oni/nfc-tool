@@ -16,7 +16,7 @@ function doPost(e) {
 }
 
 function handleLogin(id, pw) {
-  const rows = SpreadsheetApp.openById(MASTER_SS_ID).getSheetByName("ユーザー管理").getDataRange().getValues();
+  const rows = SpreadsheetApp.openById(MASTER_SHEET_ID).getSheetByName("ユーザー管理").getDataRange().getValues();
   for (let i = 1; i < rows.length; i++) {
     if (rows[i][0] == id && rows[i][1] == pw) {
       return { success: true, sId: rows[i][2], companyCode: rows[i][3] };
@@ -29,10 +29,10 @@ function getD(sId, n) { return SpreadsheetApp.openById(sId).getSheetByName(n).ge
 
 function addM(sId, row) { 
   SpreadsheetApp.openById(sId).getSheetByName("道具名簿").appendRow(row); 
-  return "登録完了"; 
+  return { success: true, message: "登録完了" }; // オブジェクトで返す
 }
 
 function addS(sId, dept, name, comp) {
   SpreadsheetApp.openById(sId).getSheetByName("社員名簿").appendRow([new Date(), dept, name, comp]);
-  return "社員登録完了";
+  return { success: true, message: "社員登録完了" }; // オブジェクトで返す
 }
