@@ -1,6 +1,11 @@
 const MASTER_SHEET_ID = '1_z9SacqBnkhj-VeD5EQhJHiAj38l2H-M60j_ikgGYbA';
 
 function doPost(e) {
+// 通信がない状態で実行されたら何もしない
+  if (!e || !e.postData || !e.postData.contents) {
+    return ContentService.createTextOutput("No data").setMimeType(ContentService.MimeType.TEXT);
+  }
+  
   const p = JSON.parse(e.postData.contents);
   let res;
   switch (p.action) {
