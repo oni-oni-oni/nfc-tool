@@ -33,7 +33,7 @@
         <ul id="scanResults" class="list-group shadow-sm"></ul>
     </div>
 
-    <!-- 道具名簿（登録・編集・一覧） -->
+    <!-- 名簿・登録・編集 -->
     <div id="view-register" class="view-section mt-4">
         <div class="card p-3 mb-4 border-0 shadow-sm">
             <h5 id="regTitle">➕ 道具の登録</h5>
@@ -54,43 +54,46 @@
         </div>
     </div>
 
-    <!-- 社員登録設定 -->
+    <!-- 設定 -->
     <div id="view-setting" class="view-section mt-4">
         <div class="card p-3 border-0 shadow-sm">
-            <h5>⚙ 社員登録設定</h5>
-            <input type="text" id="newEmpId" class="form-control my-2" placeholder="新ユーザーID">
-            <input type="text" id="newEmpPw" class="form-control my-2" placeholder="パスワード">
-            <input type="text" id="newEmpSId" class="form-control my-2" placeholder="社員ID">
-            <input type="text" id="newEmpFolder" class="form-control my-2" placeholder="DriveフォルダID">
-            <button class="btn btn-dark w-100" onclick="registerEmployee()">社員を追加</button>
+            <h5>⚙ 管理者設定</h5>
+            <input type="text" id="newEmpId" class="form-control my-1" placeholder="新ID">
+            <input type="text" id="newEmpPw" class="form-control my-1" placeholder="PW">
+            <input type="text" id="newEmpSId" class="form-control my-1" placeholder="社員ID">
+            <input type="text" id="newEmpFolder" class="form-control my-1" placeholder="DriveフォルダID">
+            <button class="btn btn-dark w-100 mt-2" onclick="registerEmployee()">登録</button>
         </div>
     </div>
 </div>
 
 <nav class="nav-fixed" id="mainNav" style="display:none;">
-    <a href="#" onclick="switchView('scan')">📡 スキャン</a>
-    <a href="#" onclick="switchView('register')">📋 名簿</a>
-    <a href="#" onclick="switchView('setting')">⚙ 設定</a>
-    <a href="#" onclick="location.reload()">🚪 Exit</a>
+    <a href="#" onclick="switchView('scan')">📡</a>
+    <a href="#" onclick="switchView('register')">📋</a>
+    <a href="#" onclick="switchView('setting')">⚙</a>
+    <a href="#" onclick="location.reload()">🚪</a>
 </nav>
 
 <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbz_aAZvAV3kRKlCrhtczqHj4CbdtKUDykMqN5RxZfk2-CHQ392VYcl7yD9wvtlgykL7YA/exec";
+    // デプロイ後のURLをここに入れてください
+    const GAS_URL = "ここにデプロイ後のウェブアプリURLを貼る";
     let session = {};
 
-    async function callGas(p) { return await fetch(GAS_URL, { method: "POST", body: JSON.stringify(p) }); }
-
-    // 【重要】エラーの原因だった window.onload は完全に削除しました
+    async function callGas(p) { 
+        return await fetch(GAS_URL, { method: "POST", body: JSON.stringify(p) }); 
+    }
 
     async function handleLogin() {
         const id = document.getElementById('userId').value, pw = document.getElementById('userPw').value;
-        const res = await callGas({ action: "login", id, pw });
-        const data = await res.json();
-        if (data.success) {
-            session = data;
-            document.getElementById('mainNav').style.display = "flex";
-            switchView('register');
-        } else { alert("認証に失敗しました"); }
+        try {
+            const res = await callGas({ action: "login", id, pw });
+            const data = await res.json();
+            if (data.success) {
+                session = data;
+                document.getElementById('mainNav').style.display = "flex";
+                switchView('register');
+            } else { alert("認証失敗"); }
+        } catch(e) { alert("通信エラー: URLを確認してください"); }
     }
 
     function switchView(v) {
@@ -100,17 +103,14 @@
     }
 
     async function startBulkScan() {
-        if (!('NDEFReader' in window)) return alert("NFC非対応です");
-        try {
-            const ndef = new NDEFReader(); await ndef.scan();
-            document.getElementById('scanStatus').innerText = "スキャン中... タグをかざしてください";
-            ndef.onreading = e => {
-                const li = document.createElement('li');
-                li.className = "list-group-item d-flex justify-content-between align-items-center";
-                li.innerHTML = `<span>ID: ${e.serialNumber}</span><span class="badge bg-success">検知</span>`;
-                document.getElementById('scanResults').prepend(li);
-            };
-        } catch(e) { alert("NFCの起動に失敗しました"); }
+        if (!('NDEFReader' in window)) return alert("NFC非対応ブラウザです");
+        const ndef = new NDEFReader(); await ndef.scan();
+        ndef.onreading = e => {
+            const li = document.createElement('li');
+            li.className = "list-group-item d-flex justify-content-between";
+            li.innerHTML = `<span>ID: ${e.serialNumber}</span><span class="badge bg-success">OK</span>`;
+            document.getElementById('scanResults').prepend(li);
+        };
     }
 
     async function loadTools() {
@@ -119,22 +119,16 @@
         document.getElementById('toolTableBody').innerHTML = data.map(t => `
             <tr>
                 <td><img src="${t[2] || ''}" class="thumb"></td>
-                <td><b>${t[0]}</b><br><small class="text-muted">${t[1]}</small></td>
-                <td>
-                    <button class="btn btn-sm btn-outline-primary" onclick="editTool('${t[1]}','${t[0]}','${t[3]}')">編</button>
-                    <button class="btn btn-sm btn-outline-danger" onclick="deleteTool('${t[1]}')">削</button>
-                </td>
+                <td><b>${t[0]}</b></td>
+                <td><button class="btn btn-sm btn-primary" onclick="editTool('${t[1]}','${t[0]}','${t[3]}')">編</button></td>
             </tr>
         `).join('');
     }
 
     async function registerTool() {
-        const btn = document.getElementById('btnReg');
-        btn.disabled = true; btn.innerText = "処理中...";
         const file = document.getElementById('regImage').files[0];
         let base64 = "";
         if (file) base64 = await new Promise(r => { const rd = new FileReader(); rd.onload = e => r(e.target.result); rd.readAsDataURL(file); });
-        
         const res = await callGas({
             action: "addToolMaster",
             folderId: session.folderId,
@@ -144,7 +138,6 @@
             imageBlob: base64
         });
         alert(await res.text());
-        btn.disabled = false; btn.innerText = "名簿に保存";
         loadTools();
     }
 
@@ -152,23 +145,12 @@
         document.getElementById('regTag').value = tag;
         document.getElementById('regName').value = name;
         document.getElementById('regRemarks').value = rem || "";
-        document.getElementById('regTitle').innerText = "📝 道具の編集";
-        document.getElementById('btnReg').innerText = "上書き保存";
         window.scrollTo(0,0);
     }
 
-    async function deleteTool(tagId) {
-        if(!confirm("削除しますか？")) return;
-        const res = await callGas({ action: "deleteToolFull", tagId: tagId });
-        alert(await res.text());
-        loadTools();
-    }
-
     async function scanSingleTag() {
-        try {
-            const ndef = new NDEFReader(); await ndef.scan();
-            ndef.onreading = e => { document.getElementById('regTag').value = e.serialNumber; };
-        } catch(e) { alert("NFCスキャンエラー"); }
+        const ndef = new NDEFReader(); await ndef.scan();
+        ndef.onreading = e => { document.getElementById('regTag').value = e.serialNumber; };
     }
 
     async function registerEmployee() {
@@ -178,7 +160,7 @@
             newPw: document.getElementById('newEmpPw').value,
             newSId: document.getElementById('newEmpSId').value,
             newFolderId: document.getElementById('newEmpFolder').value,
-            newCCode: "C001" // デフォルト値
+            newCCode: "C001"
         });
         alert(await res.text());
     }

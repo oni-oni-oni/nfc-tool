@@ -11,6 +11,7 @@ function doPost(e) {
   const ss = SpreadsheetApp.openById(MASTER_SHEET_ID);
 
   try {
+    // ログイン処理
     if (action === "login") {
       const sheet = ss.getSheetByName('社員名簿');
       const data = sheet.getDataRange().getValues();
@@ -22,11 +23,13 @@ function doPost(e) {
       return sendJson({ success: false });
     }
 
+    // 道具名簿の全データ取得
     if (action === "fetchToolMaster") {
       const sheet = ss.getSheetByName('道具名簿');
       return sendJson(sheet.getDataRange().getValues().slice(1));
     }
 
+    // 道具の登録・上書き（画像保存ロジックを含む）
     if (action === "addToolMaster") {
       const sheet = ss.getSheetByName('道具名簿');
       const data = sheet.getDataRange().getValues();
@@ -52,6 +55,7 @@ function doPost(e) {
       }
     }
 
+    // 削除
     if (action === "deleteToolFull") {
       const sheet = ss.getSheetByName('道具名簿');
       const data = sheet.getDataRange().getValues();
@@ -63,6 +67,7 @@ function doPost(e) {
       }
     }
 
+    // 社員登録
     if (action === "registerEmployee") {
       const sheet = ss.getSheetByName('社員名簿');
       sheet.appendRow([params.newId, params.newPw, params.newSId, "", params.newCCode, params.newFolderId]);
