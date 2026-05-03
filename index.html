@@ -102,12 +102,12 @@
   // 通信共通関数
  async function callGas(data) {
   return fetch(GAS_URL, {
-    method: "POST", // GAS側で doPost(e) を実行させる
-    mode: "cors",   // CORSを許可
-    redirect: "follow", // 重要：Googleのリダイレクトを追跡する
+    method: "POST",
+    mode: "cors", // ブラウザにCORSを意識させる
+    redirect: "follow", // Googleのリダイレクトを許可する
     body: JSON.stringify(data),
     headers: {
-      "Content-Type": "text/plain;charset=utf-8" // GASが受け取りやすい形式
+      "Content-Type": "text/plain;charset=utf-8"
     }
   });
 }
