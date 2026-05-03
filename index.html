@@ -3,86 +3,113 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>道具管理スマホ版</title>
+  <title>道具管理システム</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
     body { background-color: #f0f2f5; padding: 10px; font-family: sans-serif; font-size: 16px; }
-    .container-custom { max-width: 600px; margin: auto; background: white; padding: 15px; border-radius: 15px; shadow: 0 4px 10px rgba(0,0,0,0.1); }
-    /* ボタンを大きく押しやすく */
-    .btn-lg-custom { padding: 15px; font-weight: bold; font-size: 1.1em; width: 100%; border-radius: 10px; margin-bottom: 10px; }
-    /* タブの調整 */
-    .nav-pills .nav-link { margin-bottom: 5px; background: #e9ecef; color: #495057; border-radius: 8px; }
-    .nav-pills .nav-link.active { background-color: #0d6efd !important; }
-    /* テーブルのスマホ最適化 */
-    .table { font-size: 0.9em; }
-    .status-badge { padding: 5px 8px; border-radius: 5px; font-size: 0.8em; }
-    .bg-保管中 { background-color: #dee2e6; }
-    .bg-貸出中 { background-color: #cfe2ff; color: #084298; }
-    .bg-修理中 { background-color: #f8d7da; color: #842029; }
+    .container-custom { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); min-height: 80vh; }
+    
+    /* 画面切り替え制御 */
     .view-section { display: none; }
     .active-view { display: block !important; }
+
+    /* スマホ用巨大ボタン */
+    .btn-lg-custom { padding: 18px; font-weight: bold; font-size: 1.2em; width: 100%; border-radius: 12px; margin-bottom: 12px; border: none; }
+    
+    /* タブデザイン */
+    .nav-pills .nav-link { margin-bottom: 8px; background: #f8f9fa; color: #495057; border: 1px solid #dee2e6; border-radius: 10px; transition: 0.3s; }
+    .nav-pills .nav-link.active { background-color: #0d6efd !important; color: white !important; border-color: #0d6efd; }
+
+    /* テーブル調整 */
+    .table { font-size: 0.95em; vertical-align: middle; }
+    .status-badge { padding: 6px 10px; border-radius: 6px; font-size: 0.85em; font-weight: bold; display: inline-block; }
+    .bg-保管中 { background-color: #e9ecef; color: #495057; }
+    .bg-貸出中 { background-color: #e7f1ff; color: #0d6efd; }
+    .bg-修理中 { background-color: #fff5f5; color: #e03131; }
+
+    input.form-control-lg { border-radius: 10px; padding: 15px; border: 2px solid #eee; }
+    input.form-control-lg:focus { border-color: #0d6efd; box-shadow: none; }
   </style>
 </head>
 <body>
 
 <div class="container-custom">
-  <!-- ログイン画面 -->
+  
+  <!-- 1. ログイン画面 -->
   <div id="view-login" class="view-section active-view mt-4 text-center">
-    <h3 class="fw-bold mb-4">🔑 システムログイン</h3>
-    <input type="text" id="userId" class="form-control form-control-lg mb-3" placeholder="ユーザーID">
-    <input type="password" id="userPw" class="form-control form-control-lg mb-4" placeholder="パスワード">
-    <button id="loginBtn" class="btn btn-primary btn-lg-custom" onclick="handleLogin()">ログイン</button>
-    <p id="loginMsg" class="text-danger mt-3"></p>
+    <h2 class="fw-bold mb-4">🔑 システムログイン</h2>
+    <div class="mb-3 text-start">
+      <label class="small fw-bold text-muted ms-1">ユーザーID</label>
+      <input type="text" id="userId" class="form-control form-control-lg" placeholder="IDを入力">
+    </div>
+    <div class="mb-4 text-start">
+      <label class="small fw-bold text-muted ms-1">パスワード</label>
+      <input type="password" id="userPw" class="form-control form-control-lg" placeholder="PWを入力">
+    </div>
+    <button id="loginBtn" class="btn btn-primary btn-lg-custom shadow" onclick="handleLogin()">ログイン</button>
+    <p id="loginMsg" class="text-danger mt-3 fw-bold"></p>
   </div>
 
-  <!-- メイン画面 -->
+  <!-- 2. メイン画面 (初期は非表示) -->
   <div id="view-main" class="view-section">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      <h5 class="fw-bold text-primary mb-0" id="displayCompany"></h5>
-      <button class="btn btn-sm btn-outline-secondary" onclick="location.reload()">ログアウト</button>
+    <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-2">
+      <div>
+        <span class="text-muted small">ログイン中:</span>
+        <h5 class="fw-bold text-primary mb-0" id="displayCompany"></h5>
+      </div>
+      <button class="btn btn-sm btn-outline-secondary" onclick="location.reload()">終了</button>
     </div>
 
     <!-- スマホ用ナビゲーション -->
-    <ul class="nav nav-pills nav-fill mb-3" id="pills-tab">
+    <ul class="nav nav-pills nav-fill mb-4" id="pills-tab">
       <li class="nav-item"><a class="nav-link active" id="tab-tools" onclick="switchView('tools')">稼働状況</a></li>
       <li class="nav-item"><a class="nav-link" id="tab-master" onclick="switchView('master')">道具登録</a></li>
       <li class="nav-item"><a class="nav-link" id="tab-staff" onclick="switchView('staff')">社員設定</a></li>
     </ul>
 
-    <!-- 1. 稼働状況一覧 -->
+    <!-- セクション1: 稼働状況一覧 -->
     <div id="sec-tools" class="sub-view active-view">
-      <div id="loading-tools" class="text-center p-3" style="display:none;">読込中...</div>
+      <div id="loading-tools" class="text-center p-4" style="display:none;">
+        <div class="spinner-border text-primary" role="status"></div>
+        <div class="mt-2 text-muted">読み込み中...</div>
+      </div>
       <div class="table-responsive">
-        <table class="table table-sm table-hover">
-          <thead class="table-dark"><tr><th>道具名</th><th>場所</th><th>状況</th></tr></thead>
+        <table class="table table-hover">
+          <thead class="table-light"><tr><th>道具名</th><th>使用者</th><th>状況</th></tr></thead>
           <tbody id="tbd"></tbody>
         </table>
       </div>
     </div>
 
-    <!-- 2. 道具登録（スキャン連動版） -->
+    <!-- セクション2: 道具登録（スキャン直結型） -->
     <div id="sec-master" class="sub-view" style="display:none;">
-      <div class="card card-body mb-3 border-0 bg-light">
-        <label class="small fw-bold mb-1">新しい道具の名前</label>
-        <input type="text" id="newToolName" class="form-control form-control-lg mb-3" placeholder="例：インパクトドライバ">
-        <button class="btn btn-success btn-lg-custom" onclick="scanAndRegisterTool()">📡 スキャンして登録</button>
-        <p class="small text-muted mt-2">※ボタンを押してからタグをスマホにかざしてください</p>
+      <div class="card card-body mb-4 border-0 bg-light p-3">
+        <h6 class="fw-bold mb-3">新しい道具を登録</h6>
+        <input type="text" id="newToolName" class="form-control form-control-lg mb-3" placeholder="道具名を入力">
+        <button class="btn btn-success btn-lg-custom shadow" onclick="scanAndRegisterTool()">📡 スキャンして登録</button>
+        <div class="alert alert-info py-2 small mb-0">
+          ①名前を入力 ②ボタンを押す ③タグをかざす
+        </div>
       </div>
-      <table class="table table-striped mt-3">
+      <h6 class="fw-bold mb-2">登録済みリスト</h6>
+      <table class="table table-sm table-striped">
         <thead class="table-success"><tr><th>道具名</th><th>タグID</th><th></th></tr></thead>
         <tbody id="masterTableBody"></tbody>
       </table>
     </div>
 
-    <!-- 3. 社員登録 -->
+    <!-- セクション3: 社員設定 -->
     <div id="sec-staff" class="sub-view" style="display:none;">
-      <div class="card card-body mb-3 border-0 bg-light">
-        <input type="text" id="deptName" class="form-control mb-2" placeholder="部署名">
+      <div class="card card-body mb-4 border-0 bg-light p-3">
+        <h6 class="fw-bold mb-3">社員を新規追加</h6>
+        <input type="text" id="deptName" class="form-control mb-2" placeholder="部署名（例：工事部）">
         <input type="text" id="staffName" class="form-control mb-3" placeholder="氏名">
-        <button class="btn btn-primary btn-lg-custom" onclick="registerStaff()">社員を追加</button>
+        <button class="btn btn-primary btn-lg-custom shadow" onclick="registerStaff()">社員を追加</button>
       </div>
+      <h6 class="fw-bold mb-2">所属社員一覧</h6>
       <table class="table table-sm"><tbody id="staffTbd"></tbody></table>
     </div>
+
   </div>
 </div>
 
@@ -100,22 +127,33 @@
     });
   }
 
+  // ログイン処理（不具合修正版）
   async function handleLogin() {
     const id = document.getElementById('userId').value;
     const pw = document.getElementById('userPw').value;
     const msg = document.getElementById('loginMsg');
+    
+    if(!id || !pw) return msg.innerText = "IDとパスワードを入力してください";
+    
     msg.innerText = "認証中...";
     try {
       const res = await callGas({ action: "login", id: id, pw: pw });
       const data = await res.json();
       if (data.success) {
         session = data;
-        document.getElementById('displayCompany').innerText = data.companyCode;
+        document.getElementById('displayCompany').innerText = data.companyCode + " 様";
+        
+        // 画面切り替え（クラス操作に統一）
         document.getElementById('view-login').classList.remove('active-view');
         document.getElementById('view-main').classList.add('active-view');
+        
         loadToolsData();
-      } else { msg.innerText = data.message; }
-    } catch (e) { msg.innerText = "通信エラー"; }
+      } else { 
+        msg.innerText = data.message; 
+      }
+    } catch (e) { 
+      msg.innerText = "通信エラーが発生しました"; 
+    }
   }
 
   function switchView(v) {
@@ -125,6 +163,7 @@
     });
     if (v === 'master') loadMasterData();
     if (v === 'staff') loadStaffData();
+    if (v === 'tools') loadToolsData();
   }
 
   async function loadToolsData() {
@@ -135,43 +174,55 @@
     document.getElementById('tbd').innerHTML = rows.map(x => `
       <tr>
         <td><strong>${x[1]||""}</strong></td>
-        <td><small>${x[2]||""}</small></td>
-        <td><span class="status-badge bg-${x[4]||'保管中'}">${x[4]||""}</span></td>
+        <td><small>${x[2]||"未設定"}</small></td>
+        <td><span class="status-badge bg-${x[4]||'保管中'}">${x[4]||"保管中"}</span></td>
       </tr>`).join('');
     document.getElementById('loading-tools').style.display = "none";
   }
 
-  // ★道具登録（スキャン連携版）
+  // 道具登録＋NFCスキャン
   async function scanAndRegisterTool() {
     const name = document.getElementById('newToolName').value;
     if (!name) return alert("道具名を入力してください");
 
     try {
-      if (!('NDEFReader' in window)) return alert("このブラウザはNFCに対応していません");
+      if (!('NDEFReader' in window)) return alert("この端末/ブラウザはNFC読み取りに対応していません");
+      
       const ndef = new NDEFReader();
       await ndef.scan();
-      alert("タグ（タブ）をスマホ背面にかざしてください");
+      alert("【スキャン準備完了】\nタグをスマホの背面上部にかざしてください。");
 
       ndef.onreading = async (event) => {
         const tagId = event.serialNumber;
-        const res = await callGas({ action: "addToolMaster", name: name, tag: tagId, sId: session.sId });
+        const res = await callGas({ 
+          action: "addToolMaster", 
+          name: name, 
+          tag: tagId, 
+          sId: session.sId 
+        });
         const result = await res.json();
         alert(result.message);
         document.getElementById('newToolName').value = "";
         loadMasterData();
       };
-    } catch (e) { alert("NFCエラー: " + e); }
+    } catch (e) { 
+      alert("NFC読み取りを開始できませんでした: " + e); 
+    }
   }
 
   async function loadMasterData() {
     const res = await callGas({ action: "fetchToolMaster", sId: session.sId });
     const d = await res.json();
     document.getElementById('masterTableBody').innerHTML = (d||[]).map(r => `
-      <tr><td>${r[0]}</td><td><small>${r[1]}</small></td><td><button class="btn btn-sm btn-outline-danger" onclick="deleteTool('${r[0]}')">×</button></td></tr>`).join('');
+      <tr>
+        <td>${r[0]}</td>
+        <td><code style="font-size:0.8em;">${r[1]}</code></td>
+        <td class="text-end"><button class="btn btn-sm btn-outline-danger" onclick="deleteTool('${r[0]}')">×</button></td>
+      </tr>`).join('');
   }
 
   async function deleteTool(name) {
-    if(!confirm(name + " を削除しますか？")) return;
+    if(!confirm(name + " を名簿から削除しますか？")) return;
     const res = await callGas({ action: "deleteTool", name: name, sId: session.sId });
     loadMasterData();
   }
@@ -180,12 +231,23 @@
     const res = await callGas({ action: "fetchStaff", sId: session.sId });
     const d = await res.json();
     document.getElementById('staffTbd').innerHTML = (d||[]).map(r => `
-      <tr class="align-middle"><td>${r[1]}</td><td>${r[2]}</td><td class="text-end"><button class="btn btn-sm btn-outline-danger" onclick="delStaff('${r[2]}')">削除</button></td></tr>`).join('');
+      <tr class="align-middle">
+        <td><small class="text-muted">${r[1]}</small><br><strong>${r[2]}</strong></td>
+        <td class="text-end"><button class="btn btn-sm btn-outline-danger" onclick="delStaff('${r[2]}')">削除</button></td>
+      </tr>`).join('');
   }
 
   async function registerStaff() {
     const d = document.getElementById('deptName').value, n = document.getElementById('staffName').value;
-    const res = await callGas({ action: "addStaff", dept: d, name: n, sId: session.sId, companyCode: session.companyCode });
+    if(!d || !n) return alert("部署名と氏名を入力してください");
+    await callGas({ action: "addStaff", dept: d, name: n, sId: session.sId, companyCode: session.companyCode });
+    document.getElementById('staffName').value = "";
+    loadStaffData();
+  }
+
+  async function delStaff(name) {
+    if(!confirm(name + " を削除しますか？")) return;
+    await callGas({ action: "deleteStaff", name: name, sId: session.sId });
     loadStaffData();
   }
 </script>
