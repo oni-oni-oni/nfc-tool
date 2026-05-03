@@ -1,215 +1,209 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
 <head>
-  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>道具管理システム</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
     body { background-color: #f8f9fa; padding: 15px; font-family: sans-serif; }
-    .container { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+    .container-custom { max-width: 1000px; margin: auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
     .status-badge { padding: 4px 10px; border-radius: 50px; font-size: 0.82em; font-weight: bold; }
     .bg-保管中 { background-color: #e9ecef; color: #495057; }
     .bg-貸出中 { background-color: #cfe2ff; color: #084298; }
     .bg-修理中 { background-color: #f8d7da; color: #842029; }
     th { white-space: nowrap; font-size: 0.85em; background-color: #f1f3f5 !important; }
     td { font-size: 0.88em; vertical-align: middle; }
+    .view-section { display: none; }
+    .active-view { display: block !important; }
     .nav-tabs .nav-link { cursor: pointer; color: #6c757d; font-weight: bold; }
     .nav-tabs .nav-link.active { color: #0d6efd !important; border-bottom: 3px solid #0d6efd; }
-    .scan-list-area { max-height: 300px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 4px; background: #fff; }
   </style>
 </head>
 <body>
-<div class="container">
-  <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2 class="text-primary mb-0">
-      道具管理システム <span class="fs-5 text-secondary">（<?!= companyCode ?> 様）</span>
-    </h2>
-    <button class="btn btn-outline-danger btn-sm" onclick="logout()">ログアウト</button>
+
+<div class="container-custom">
+  <!-- 1. ログイン画面 (初期表示) -->
+  <div id="view-login" class="view-section active-view mt-5 text-center">
+    <h3 class="fw-bold mb-4">🔑 道具管理システム ログイン</h3>
+    <div style="max-width: 400px; margin: auto;">
+      <input type="text" id="userId" class="form-control mb-2" placeholder="ユーザーID">
+      <input type="password" id="userPw" class="form-control mb-4" placeholder="パスワード">
+      <button id="loginBtn" class="btn btn-primary w-100 py-3" onclick="handleLogin()">ログイン</button>
+      <p id="loginMsg" class="text-danger mt-3 small"></p>
+    </div>
   </div>
 
-  <ul class="nav nav-tabs mb-4">
-    <li class="nav-item"><a class="nav-link active" id="tab-tools" onclick="switchView('tools')">稼働状況一覧</a></li>
-    <li class="nav-item"><a class="nav-link" id="tab-master" onclick="switchView('master')">道具名簿</a></li>
-    <li class="nav-item"><a class="nav-link" id="tab-staff" onclick="switchView('staff')">👤 社員登録設定</a></li>
-    <li class="nav-item"><a class="nav-link text-success fw-bold" id="tab-scan" onclick="switchView('scan')">📡 一括スキャン</a></li>
-  </ul>
+  <!-- 2. メイン画面 (ログイン成功後に表示) -->
+  <div id="view-main" class="view-section">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h2 class="text-primary mb-0">
+        道具管理システム <span id="displayCompany" class="fs-5 text-secondary"></span>
+      </h2>
+      <button class="btn btn-outline-danger btn-sm" onclick="logout()">ログアウト</button>
+    </div>
 
-  <div id="view-tools">
-    <div class="row g-3 mb-4 bg-light p-3 rounded">
-      <div class="col-md-2"><label class="small text-muted">道具</label><select id="fItem" class="form-select" onchange="draw()"></select></div>
-      <div class="col-md-2"><label class="small text-muted">場所</label><select id="fPlace" class="form-select" onchange="draw()"></select></div>
-      <div class="col-md-2"><label class="small text-muted">ユーザー</label><select id="fUser" class="form-select" onchange="draw()"></select></div>
-      <div class="col-md-2"><label class="small text-muted">状況</label><select id="fStatus" class="form-select" onchange="draw()"></select></div>
-      <div class="col-md-2"><label class="small text-muted">並び替え</label><select id="sortCol" class="form-select" onchange="draw()"><option value="0">No順</option><option value="1">道具名順</option></select></div>
-      <div class="col-md-2 d-flex align-items-end"><button class="btn btn-outline-secondary w-100" onclick="resetF()">クリア</button></div>
-    </div>
-    <div id="loading-tools" class="text-center p-4">読み込み中...</div>
-    <table class="table table-hover shadow-sm"><thead class="table-dark"><tr id="thr"></tr></thead><tbody id="tbd"></tbody></table>
-  </div>
+    <ul class="nav nav-tabs mb-4">
+      <li class="nav-item"><a class="nav-link active" id="tab-tools" onclick="switchView('tools')">稼働状況一覧</a></li>
+      <li class="nav-item"><a class="nav-link" id="tab-master" onclick="switchView('master')">道具名簿</a></li>
+      <li class="nav-item"><a class="nav-link" id="tab-staff" onclick="switchView('staff')">👤 社員登録設定</a></li>
+      <li class="nav-item"><a class="nav-link text-success fw-bold" id="tab-scan" onclick="switchView('scan')">📡 一括スキャン</a></li>
+    </ul>
 
-  <div id="view-master" style="display:none;">
-    <div class="row g-2 mb-4 p-3 border rounded bg-light">
-      <div class="col-md-5"><label class="small fw-bold">道具名</label><input type="text" id="newToolName" class="form-control"></div>
-      <div class="col-md-5"><label class="small fw-bold">タグID</label><input type="text" id="newTagId" class="form-control"></div>
-      <div class="col-md-2 d-flex align-items-end"><button class="btn btn-success w-100" onclick="registerToolMaster()">登録</button></div>
+    <!-- 稼働状況 -->
+    <div id="sec-tools" class="sub-view active-view">
+      <div class="row g-3 mb-4 bg-light p-3 rounded">
+        <div class="col-md-2"><label class="small text-muted">道具</label><select id="fItem" class="form-select" onchange="draw()"></select></div>
+        <div class="col-md-2"><label class="small text-muted">場所</label><select id="fPlace" class="form-select" onchange="draw()"></select></div>
+        <div class="col-md-2"><label class="small text-muted">ユーザー</label><select id="fUser" class="form-select" onchange="draw()"></select></div>
+        <div class="col-md-2"><label class="small text-muted">状況</label><select id="fStatus" class="form-select" onchange="draw()"></select></div>
+        <div class="col-md-2 d-flex align-items-end"><button class="btn btn-outline-secondary w-100" onclick="resetF()">クリア</button></div>
+      </div>
+      <div id="loading-tools" class="text-center p-4" style="display:none;">読み込み中...</div>
+      <table class="table table-hover shadow-sm"><thead class="table-dark"><tr id="thr"></tr></thead><tbody id="tbd"></tbody></table>
     </div>
-    <table class="table table-striped"><thead class="table-success"><tr><th>道具名</th><th>タグID</th></tr></thead><tbody id="masterTableBody"></tbody></table>
-  </div>
 
-  <div id="view-staff" style="display:none;">
-    <div class="row g-2 mb-4 p-3 border rounded bg-light">
-      <div class="col-md-5"><label class="small fw-bold">部署名</label><input type="text" id="deptName" class="form-control"></div>
-      <div class="col-md-5"><label class="small fw-bold">氏名</label><input type="text" id="staffName" class="form-control"></div>
-      <div class="col-md-2 d-flex align-items-end"><button class="btn btn-primary w-100" onclick="registerStaff()">登録</button></div>
+    <!-- 道具名簿 -->
+    <div id="sec-master" class="sub-view" style="display:none;">
+      <div class="row g-2 mb-4 p-3 border rounded bg-light">
+        <div class="col-md-5"><label class="small fw-bold">道具名</label><input type="text" id="newToolName" class="form-control"></div>
+        <div class="col-md-5"><label class="small fw-bold">タグID</label><input type="text" id="newTagId" class="form-control"></div>
+        <div class="col-md-2 d-flex align-items-end"><button class="btn btn-success w-100" onclick="registerToolMaster()">登録</button></div>
+      </div>
+      <table class="table table-striped"><thead class="table-success"><tr><th>道具名</th><th>タグID</th></tr></thead><tbody id="masterTableBody"></tbody></table>
     </div>
-    <table class="table table-striped"><thead class="table-dark"><tr><th>部署</th><th>氏名</th><th>操作</th></tr></thead><tbody id="staffTbd"></tbody></table>
-  </div>
 
-  <div id="view-scan" style="display:none;">
-    <div class="alert alert-success text-center mb-4">
-      <button id="nfcStartBtn" class="btn btn-success btn-lg px-5 mb-2" onclick="startNFCScan()">📡 スキャン開始</button>
-      <div id="scanStatus" class="small fw-bold mt-1">Android Chromeで実行してください</div>
+    <!-- 社員登録 -->
+    <div id="sec-staff" class="sub-view" style="display:none;">
+      <div class="row g-2 mb-4 p-3 border rounded bg-light">
+        <div class="col-md-5"><label class="small fw-bold">部署名</label><input type="text" id="deptName" class="form-control"></div>
+        <div class="col-md-5"><label class="small fw-bold">氏名</label><input type="text" id="staffName" class="form-control"></div>
+        <div class="col-md-2 d-flex align-items-end"><button class="btn btn-primary w-100" onclick="registerStaff()">登録</button></div>
+      </div>
+      <table class="table table-striped"><thead class="table-dark"><tr><th>部署</th><th>氏名</th><th>操作</th></tr></thead><tbody id="staffTbd"></tbody></table>
     </div>
-    <div class="row g-2 mb-4 p-3 border rounded bg-light">
-      <div class="col-md-6"><label class="small fw-bold">利用者</label><select id="scanUserSelect" class="form-select"></select></div>
-      <div class="col-md-6"><label class="small fw-bold">場所</label><input type="text" id="scanPlaceInput" class="form-control" placeholder="現場名"></div>
-    </div>
-    <h6>スキャン済みリスト (<span id="scanCount">0</span>件)</h6>
-    <div class="scan-list-area mb-4">
-      <table class="table table-sm table-striped mb-0">
-        <thead class="table-secondary"><tr><th>道具名</th><th>ID</th><th>消去</th></tr></thead>
-        <tbody id="scanTableBody"><tr><td colspan="3" class="text-center p-3 text-muted">未読込</td></tr></tbody>
-      </table>
-    </div>
-    <div class="row g-2">
-      <div class="col-6"><button class="btn btn-primary btn-lg w-100" onclick="bulkExecute('貸出中')">一括貸出</button></div>
-      <div class="col-6"><button class="btn btn-outline-secondary btn-lg w-100" onclick="bulkExecute('保管中')">一括返却</button></div>
+
+    <!-- 一括スキャン -->
+    <div id="sec-scan" class="sub-view" style="display:none;">
+      <div class="alert alert-success text-center mb-4">
+        <button class="btn btn-success btn-lg px-5 mb-2" onclick="startNFCScan()">📡 スキャン開始</button>
+      </div>
     </div>
   </div>
 </div>
 
 <script>
-  var db = [], sid = "<?!= sheetId ?>", cCode = "<?!= companyCode ?>";
-  var scannedList = [];
+  // ★作成したGASのウェブアプリURLをここに貼り付けてください
+  const GAS_URL = "https://script.google.com/macros/s/AKfycbz_aAZvAV3kRKlCrhtczqHj4CbdtKUDykMqN5RxZfk2-CHQ392VYcl7yD9wvtlgykL7YA/exec"; 
+  
+  let session = null;
+  let db = [];
 
-  window.onload = function() { 
-    // まずメインデータを読み込む。これが終わるまで他は動かさない
-    loadToolsData(); 
-  };
+  // 通信共通関数
+  async function callGas(data) {
+    return fetch(GAS_URL, {
+      method: "POST",
+      body: JSON.stringify(data)
+    });
+  }
 
-// switchViewを元のシンプルな形に戻す（リロード処理を削除！）
-function switchView(v) {
-  const views = ['tools', 'master', 'staff', 'scan'];
-  views.forEach(id => {
-    const el = document.getElementById('view-' + id);
-    const tab = document.getElementById('tab-' + id);
-    if(el) el.style.display = (v === id ? 'block' : 'none');
-    if(tab) tab.classList.toggle('active', v === id);
-  });
-  if (v === 'master') loadMasterData();
-  if (v === 'staff') loadStaffData();
-  if (v === 'scan') loadScanStaffList();
-}
+  // 1. ログイン処理
+  async function handleLogin() {
+    const id = document.getElementById('userId').value;
+    const pw = document.getElementById('userPw').value;
+    const msg = document.getElementById('loginMsg');
+    if(!id || !pw) return msg.innerText = "入力してください";
+    
+    msg.innerText = "認証中...";
+    try {
+      const res = await callGas({ action: "login", id: id, pw: pw });
+      const data = await res.json();
 
-  function loadToolsData() {
-    google.script.run.withSuccessHandler(function(data) {
-      if(!data || data.length === 0) return;
-      db = data;
-      initF(data.slice(1));
-      draw();
-      document.getElementById('loading-tools').style.display = "none";
-    }).getFullData(sid);
+      if (data.success) {
+        session = data; 
+        document.getElementById('displayCompany').innerText = "（" + data.companyCode + " 様）";
+        document.getElementById('view-login').classList.remove('active-view');
+        document.getElementById('view-main').classList.add('active-view');
+        loadToolsData();
+      } else {
+        msg.innerText = data.message || "ログイン失敗";
+      }
+    } catch (e) {
+      msg.innerText = "通信エラーが発生しました";
+    }
+  }
+
+  // 2. 稼働状況データ取得
+  async function loadToolsData() {
+    document.getElementById('loading-tools').style.display = "block";
+    const res = await callGas({ action: "fetchData", sId: session.sId });
+    db = await res.json();
+    initF(db.slice(1));
+    draw();
+    document.getElementById('loading-tools').style.display = "none";
   }
 
   function initF(rows) {
-    var make = (id, col) => {
-      var vals = [...new Set(rows.map(r => (r[col]||"").toString()))].filter(v => v).sort();
-      var el = document.getElementById(id);
-      if(el) el.innerHTML = '<option value="">すべて</option>' + vals.map(v => `<option value="${v}">${v}</option>`).join('');
+    const make = (id, col) => {
+      const vals = [...new Set(rows.map(r => (r[col]||"").toString()))].filter(v => v).sort();
+      document.getElementById(id).innerHTML = '<option value="">すべて</option>' + vals.map(v => `<option value="${v}">${v}</option>`).join('');
     };
     make('fItem', 1); make('fPlace', 2); make('fUser', 3); make('fStatus', 4);
   }
 
   function draw() {
     if(db.length < 1) return;
-    var h = db[0], r = db.slice(1), fi = document.getElementById('fItem').value, fp = document.getElementById('fPlace').value, fu = document.getElementById('fUser').value, fs = document.getElementById('fStatus').value, so = document.getElementById('sortCol').value;
-    var fil = r.filter(x => (!fi || x[1] == fi) && (!fp || x[2] == fp) && (!fu || x[3] == fu) && (!fs || x[4] == fs));
-    fil.sort((a,b) => (a[so]||"").toString().localeCompare((b[so]||"").toString(), 'ja', {numeric:true}));
+    const h = db[0], r = db.slice(1);
+    const fi = document.getElementById('fItem').value, fp = document.getElementById('fPlace').value, fu = document.getElementById('fUser').value, fs = document.getElementById('fStatus').value;
+    const fil = r.filter(x => (!fi || x[1] == fi) && (!fp || x[2] == fp) && (!fu || x[3] == fu) && (!fs || x[4] == fs));
+    
     document.getElementById('thr').innerHTML = h.map(x => `<th>${x}</th>`).join('');
-    document.getElementById('tbd').innerHTML = fil.map(x => `<tr><td>${x[0]||""}</td><td><strong>${x[1]||""}</strong></td><td>${x[2]||""}</td><td>${x[3]||""}</td><td><span class="status-badge bg-${x[4]||'保管中'}">${x[4]||""}</span></td><td>${x[5]||""}</td><td>${x[6]||""}</td></tr>`).join('');
+    document.getElementById('tbd').innerHTML = fil.map(x => `
+      <tr>
+        <td>${x[0]||""}</td><td><strong>${x[1]||""}</strong></td><td>${x[2]||""}</td><td>${x[3]||""}</td>
+        <td><span class="status-badge bg-${x[4]||'保管中'}">${x[4]||""}</span></td><td>${x[5]||""}</td><td>${x[6]||""}</td>
+      </tr>`).join('');
   }
 
-  function loadMasterData() {
-    google.script.run.withSuccessHandler(d => {
-      document.getElementById('masterTableBody').innerHTML = (d||[]).map(r => `<tr><td>${r[0]}</td><td><code>${r[1]}</code></td></tr>`).join('');
-    }).getToolMasterList(sid);
+  // 表示切り替え
+  function switchView(v) {
+    ['tools', 'master', 'staff', 'scan'].forEach(id => {
+      document.getElementById('sec-' + id).style.display = (v === id ? 'block' : 'none');
+      document.getElementById('tab-' + id).classList.toggle('active', v === id);
+    });
+    if (v === 'master') loadMasterData();
+    if (v === 'staff') loadStaffData();
   }
 
-  function loadStaffData() {
-    google.script.run.withSuccessHandler(d => {
-      document.getElementById('staffTbd').innerHTML = (d||[]).map(r => `<tr><td>${r[1]}</td><td>${r[2]}</td><td><button class="btn btn-sm btn-outline-danger" onclick="delStaff('${r[2]}')">削除</button></td></tr>`).join('');
-    }).getStaffData(sid, cCode);
+  async function loadMasterData() {
+    const res = await callGas({ action: "fetchToolMaster", sId: session.sId });
+    const d = await res.json();
+    document.getElementById('masterTableBody').innerHTML = (d||[]).map(r => `<tr><td>${r[0]}</td><td><code>${r[1]}</code></td></tr>`).join('');
   }
 
-  function loadScanStaffList() {
-    google.script.run.withSuccessHandler(d => {
-      const sel = document.getElementById('scanUserSelect');
-      if(sel) sel.innerHTML = '<option value="">選択...</option>' + d.map(r => `<option value="${r[2]}">${r[2]}</option>`).join('');
-    }).getStaffData(sid, cCode);
-  }
-
-  async function startNFCScan() {
-      // 会社名とシートIDを安全に取得
-      const sId = sid; // 変数 sid を使用
-      const comp = cCode; // 変数 cCode を使用
-      
-      // GitHubの汎用スキャナーURL
-      const githubUrl = "https://oni-oni-oni.github.io/nfc-tool/";
-      
-      // パラメータを付与してURLを生成
-      const finalUrl = githubUrl + "?sId=" + sId + "&comp=" + encodeURIComponent(comp);
-      
-      // 念のため確認ダイアログ（不要ならif文を外して location.href だけにしてください）
-      if (confirm("NFCスキャン専用画面に移動します。よろしいですか？")) {
-        // 親画面（最上位）をGitHubに切り替えることで制限を回避
-        window.top.location.href = finalUrl;
-      }
-    }
-
-  function updateScanTable() {
-    document.getElementById('scanCount').innerText = scannedList.length;
-    document.getElementById('scanTableBody').innerHTML = scannedList.map((item, i) => `<tr><td>${item.name}</td><td>${item.tagId}</td><td><button class="btn btn-sm btn-link text-danger" onclick="removeScan(${i})">消す</button></td></tr>`).join('');
-  }
-
-  function removeScan(i) { scannedList.splice(i, 1); updateScanTable(); }
-
-  function bulkExecute(st) {
-    if (scannedList.length === 0) return alert("スキャンしてください");
-    const u = document.getElementById('scanUserSelect').value;
-    const p = document.getElementById('scanPlaceInput').value;
-    if (st === '貸出中' && !u) return alert("利用者を選択してください");
-    google.script.run.withSuccessHandler(m => {
-      alert(m); scannedList = []; updateScanTable(); loadToolsData(); switchView('tools');
-    }).bulkUpdateByTagIds(sid, scannedList.map(x => x.tagId), u, p, st);
-  }
-
-  function registerToolMaster() {
-    var n = document.getElementById('newToolName').value, t = document.getElementById('newTagId').value;
+  async function registerToolMaster() {
+    const n = document.getElementById('newToolName').value, t = document.getElementById('newTagId').value;
     if(!n || !t) return alert("入力してください");
-    google.script.run.withSuccessHandler(m => { alert(m); loadMasterData(); loadToolsData(); }).addToolMaster(n, t, sid);
+    const res = await callGas({ action: "addToolMaster", name: n, tag: t, sId: session.sId });
+    alert(await res.text());
+    loadMasterData();
   }
 
-  function registerStaff() {
-    var d = document.getElementById('deptName').value, n = document.getElementById('staffName').value;
-    if(!d || !n) return alert("入力してください");
-    google.script.run.withSuccessHandler(m => { alert(m); loadStaffData(); }).addMyStaff(d, n, sid, cCode);
+  async function loadStaffData() {
+    const res = await callGas({ action: "fetchStaff", sId: session.sId });
+    const d = await res.json();
+    document.getElementById('staffTbd').innerHTML = (d||[]).map(r => `<tr><td>${r[1]}</td><td>${r[2]}</td><td><button class="btn btn-sm btn-outline-danger" onclick="delStaff('${r[2]}')">削除</button></td></tr>`).join('');
   }
 
-  function delStaff(n) {
-    if(confirm(n + "を削除？")) google.script.run.withSuccessHandler(() => loadStaffData()).deleteMyStaff(n, sid);
+  async function registerStaff() {
+    const d = document.getElementById('deptName').value, n = document.getElementById('staffName').value;
+    const res = await callGas({ action: "addStaff", dept: d, name: n, sId: session.sId, companyCode: session.companyCode });
+    alert(await res.text());
+    loadStaffData();
   }
 
-  function resetF() { ['fItem','fPlace','fUser','fStatus'].forEach(id => { if(document.getElementById(id)) document.getElementById(id).value = ""; }); draw(); }
-  function logout() { window.top.location.href = window.location.href.split('?')[0]; }
+  function resetF() { ['fItem','fPlace','fUser','fStatus'].forEach(id => document.getElementById(id).value = ""); draw(); }
+  function logout() { location.reload(); }
 </script>
 </body>
 </html>
