@@ -11,7 +11,6 @@ function doPost(e) {
   const ss = SpreadsheetApp.openById(MASTER_SHEET_ID);
 
   try {
-    // ログイン：権限情報も含めて返す
     if (action === "login") {
       const sheet = ss.getSheetByName('社員名簿');
       const data = sheet.getDataRange().getValues();
@@ -23,13 +22,11 @@ function doPost(e) {
       return sendJson({ success: false });
     }
 
-    // 道具名簿：編集・削除に対応するため全行返す
     if (action === "fetchToolMaster") {
       const sheet = ss.getSheetByName('道具名簿');
       return sendJson(sheet.getDataRange().getValues().slice(1));
     }
 
-    // 道具登録・上書き：画像保存ロジックを維持
     if (action === "addToolMaster") {
       const sheet = ss.getSheetByName('道具名簿');
       const data = sheet.getDataRange().getValues();
@@ -45,23 +42,16 @@ function doPost(e) {
         imageUrl = "https://drive.google.com/uc?export=view&id=" + file.getId();
       }
 
+      const rowData = [params.name, params.tag, imageUrl, params.remarks];
       if (rowIndex > 0) {
-        sheet.getRange(rowIndex, 1, 1, 4).setValues([[params.name, params.tag, imageUrl, params.remarks]]);
+        sheet.getRange(rowIndex, 1, 1, 4).setValues([rowData]);
         return ContentService.createTextOutput("更新完了");
       } else {
-        sheet.appendRow([params.name, params.tag, imageUrl, params.remarks]);
+        sheet.appendRow(rowData);
         return ContentService.createTextOutput("新規登録完了");
       }
     }
 
-    // 社員登録設定
-    if (action === "registerEmployee") {
-      const sheet = ss.getSheetByName('社員名簿');
-      sheet.appendRow([params.newId, params.newPw, params.newSId, "", params.newCCode, params.newFolderId]);
-      return ContentService.createTextOutput("社員登録完了");
-    }
-
-    // 道具削除
     if (action === "deleteToolFull") {
       const sheet = ss.getSheetByName('道具名簿');
       const data = sheet.getDataRange().getValues();
@@ -71,6 +61,12 @@ function doPost(e) {
           return ContentService.createTextOutput("削除完了");
         }
       }
+    }
+
+    if (action === "registerEmployee") {
+      const sheet = ss.getSheetByName('社員名簿');
+      sheet.appendRow([params.newId, params.newPw, params.newSId, "", params.newCCode, params.newFolderId]);
+      return ContentService.createTextOutput("社員登録完了");
     }
 
   } catch (err) {

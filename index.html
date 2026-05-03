@@ -27,9 +27,9 @@
 
     <!-- 一括スキャン -->
     <div id="view-scan" class="view-section mt-4">
-        <h5 class="fw-bold">📡 一括スキャン（稼働更新）</h5>
+        <h5 class="fw-bold">📡 一括スキャン</h5>
         <button class="btn btn-info w-100 my-3 py-3" onclick="startBulkScan()">スキャン開始</button>
-        <div id="scanStatus" class="alert alert-secondary text-center">待機中...</div>
+        <div id="scanStatus" class="alert alert-secondary text-center small">待機中...</div>
         <ul id="scanResults" class="list-group shadow-sm"></ul>
     </div>
 
@@ -58,9 +58,10 @@
     <div id="view-setting" class="view-section mt-4">
         <div class="card p-3 border-0 shadow-sm">
             <h5>⚙ 社員登録設定</h5>
-            <input type="text" id="newEmpId" class="form-control my-2" placeholder="新ID">
+            <input type="text" id="newEmpId" class="form-control my-2" placeholder="新ユーザーID">
             <input type="text" id="newEmpPw" class="form-control my-2" placeholder="パスワード">
-            <input type="text" id="newEmpFolder" class="form-control my-2" placeholder="GoogleDriveフォルダID">
+            <input type="text" id="newEmpSId" class="form-control my-2" placeholder="社員ID">
+            <input type="text" id="newEmpFolder" class="form-control my-2" placeholder="DriveフォルダID">
             <button class="btn btn-dark w-100" onclick="registerEmployee()">社員を追加</button>
         </div>
     </div>
@@ -79,6 +80,8 @@
 
     async function callGas(p) { return await fetch(GAS_URL, { method: "POST", body: JSON.stringify(p) }); }
 
+    // 【重要】エラーの原因だった window.onload は完全に削除しました
+
     async function handleLogin() {
         const id = document.getElementById('userId').value, pw = document.getElementById('userPw').value;
         const res = await callGas({ action: "login", id, pw });
@@ -87,7 +90,7 @@
             session = data;
             document.getElementById('mainNav').style.display = "flex";
             switchView('register');
-        } else { alert("認証失敗"); }
+        } else { alert("認証に失敗しました"); }
     }
 
     function switchView(v) {
@@ -96,22 +99,20 @@
         if (v === 'register') loadTools();
     }
 
-    // --- NFC 一括スキャン ---
     async function startBulkScan() {
-        if (!('NDEFReader' in window)) return alert("NFC非対応ブラウザです");
+        if (!('NDEFReader' in window)) return alert("NFC非対応です");
         try {
             const ndef = new NDEFReader(); await ndef.scan();
             document.getElementById('scanStatus').innerText = "スキャン中... タグをかざしてください";
             ndef.onreading = e => {
                 const li = document.createElement('li');
-                li.className = "list-group-item d-flex justify-content-between";
+                li.className = "list-group-item d-flex justify-content-between align-items-center";
                 li.innerHTML = `<span>ID: ${e.serialNumber}</span><span class="badge bg-success">検知</span>`;
                 document.getElementById('scanResults').prepend(li);
             };
-        } catch(e) { alert("NFC起動エラー"); }
+        } catch(e) { alert("NFCの起動に失敗しました"); }
     }
 
-    // --- 道具名簿 (読み込み・登録・編集) ---
     async function loadTools() {
         const res = await callGas({ action: "fetchToolMaster" });
         const data = await res.json();
@@ -120,13 +121,16 @@
                 <td><img src="${t[2] || ''}" class="thumb"></td>
                 <td><b>${t[0]}</b><br><small class="text-muted">${t[1]}</small></td>
                 <td>
-                    <button class="btn btn-sm btn-outline-primary" onclick="editTool('${t[1]}','${t[0]}','${t[3]}','${t[2]}')">編</button>
+                    <button class="btn btn-sm btn-outline-primary" onclick="editTool('${t[1]}','${t[0]}','${t[3]}')">編</button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteTool('${t[1]}')">削</button>
                 </td>
             </tr>
         `).join('');
     }
 
     async function registerTool() {
+        const btn = document.getElementById('btnReg');
+        btn.disabled = true; btn.innerText = "処理中...";
         const file = document.getElementById('regImage').files[0];
         let base64 = "";
         if (file) base64 = await new Promise(r => { const rd = new FileReader(); rd.onload = e => r(e.target.result); rd.readAsDataURL(file); });
@@ -140,10 +144,11 @@
             imageBlob: base64
         });
         alert(await res.text());
+        btn.disabled = false; btn.innerText = "名簿に保存";
         loadTools();
     }
 
-    function editTool(tag, name, rem, url) {
+    function editTool(tag, name, rem) {
         document.getElementById('regTag').value = tag;
         document.getElementById('regName').value = name;
         document.getElementById('regRemarks').value = rem || "";
@@ -152,11 +157,30 @@
         window.scrollTo(0,0);
     }
 
+    async function deleteTool(tagId) {
+        if(!confirm("削除しますか？")) return;
+        const res = await callGas({ action: "deleteToolFull", tagId: tagId });
+        alert(await res.text());
+        loadTools();
+    }
+
     async function scanSingleTag() {
         try {
             const ndef = new NDEFReader(); await ndef.scan();
             ndef.onreading = e => { document.getElementById('regTag').value = e.serialNumber; };
-        } catch(e) { alert("NFCエラー"); }
+        } catch(e) { alert("NFCスキャンエラー"); }
+    }
+
+    async function registerEmployee() {
+        const res = await callGas({
+            action: "registerEmployee",
+            newId: document.getElementById('newEmpId').value,
+            newPw: document.getElementById('newEmpPw').value,
+            newSId: document.getElementById('newEmpSId').value,
+            newFolderId: document.getElementById('newEmpFolder').value,
+            newCCode: "C001" // デフォルト値
+        });
+        alert(await res.text());
     }
 </script>
 </body>
