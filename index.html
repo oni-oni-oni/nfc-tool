@@ -96,29 +96,29 @@
     loadToolsData(); 
   };
 
-// switchViewを元のシンプルな形に戻す（リロード処理を削除！）
-function switchView(v) {
-  const views = ['tools', 'master', 'staff', 'scan'];
-  views.forEach(id => {
-    const el = document.getElementById('view-' + id);
-    const tab = document.getElementById('tab-' + id);
-    if(el) el.style.display = (v === id ? 'block' : 'none');
-    if(tab) tab.classList.toggle('active', v === id);
-  });
-  if (v === 'master') loadMasterData();
-  if (v === 'staff') loadStaffData();
-  if (v === 'scan') loadScanStaffList();
-}
+    // switchViewを元のシンプルな形に戻す（リロード処理を削除！）
+    function switchView(v) {
+    const views = ['tools', 'master', 'staff', 'scan'];
+    views.forEach(id => {
+        const el = document.getElementById('view-' + id);
+        const tab = document.getElementById('tab-' + id);
+        if(el) el.style.display = (v === id ? 'block' : 'none');
+        if(tab) tab.classList.toggle('active', v === id);
+    });
+    if (v === 'master') loadMasterData();
+    if (v === 'staff') loadStaffData();
+    if (v === 'scan') loadScanStaffList();
+    }
 
-  function loadToolsData() {
-    google.script.run.withSuccessHandler(function(data) {
-      if(!data || data.length === 0) return;
-      db = data;
-      initF(data.slice(1));
-      draw();
-      document.getElementById('loading-tools').style.display = "none";
-    }).getFullData(sid);
-  }
+    async function loadToolsData() {
+    const res = await callGas({ action: "fetchData", sId: session.sId }); // fetchで呼び出す
+    const data = await res.json();
+    if(!data || data.length === 0) return;
+    db = data;
+    initF(data.slice(1));
+    draw();
+    document.getElementById('loading-tools').style.display = "none";
+    }
 
   function initF(rows) {
     var make = (id, col) => {
