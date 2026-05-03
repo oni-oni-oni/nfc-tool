@@ -110,15 +110,11 @@
     if (v === 'scan') loadScanStaffList();
     }
 
-    async function loadToolsData() {
-    const res = await callGas({ action: "fetchData", sId: session.sId }); // fetchで呼び出す
-    const data = await res.json();
-    if(!data || data.length === 0) return;
-    db = data;
-    initF(data.slice(1));
-    draw();
-    document.getElementById('loading-tools').style.display = "none";
-    }
+    async function loadMasterData() {
+    const res = await callGas({ action: "fetchToolMaster", sId: session.sId });
+    const d = await res.json();
+    document.getElementById('masterTableBody').innerHTML = (d||[]).map(r => `<tr><td>${r[0]}</td><td><code>${r[1]}</code></td></tr>`).join('');
+}
 
   function initF(rows) {
     var make = (id, col) => {
@@ -192,12 +188,15 @@
     }).bulkUpdateByTagIds(sid, scannedList.map(x => x.tagId), u, p, st);
   }
 
-  function registerToolMaster() {
-    var n = document.getElementById('newToolName').value, t = document.getElementById('newTagId').value;
-    if(!n || !t) return alert("入力してください");
-    google.script.run.withSuccessHandler(m => { alert(m); loadMasterData(); loadToolsData(); }).addToolMaster(n, t, sid);
-  }
-
+async function registerToolMaster() {
+  var n = document.getElementById('newToolName').value, t = document.getElementById('newTagId').value;
+  if(!n || !t) return alert("入力してください");
+  const res = await callGas({ action: "addToolMaster", name: n, tag: t, sId: session.sId, folderId: session.folderId });
+  const m = await res.text();
+  alert(m);
+  loadMasterData(); 
+  loadToolsData();
+}
   function registerStaff() {
     var d = document.getElementById('deptName').value, n = document.getElementById('staffName').value;
     if(!d || !n) return alert("入力してください");
