@@ -114,32 +114,25 @@
     return response;
     }
   // 1. ログイン処理
-  async function handleLogin() {
-    const id = document.getElementById('userId').value;
-    const pw = document.getElementById('userPw').value;
-    const msg = document.getElementById('loginMsg');
-    if(!id || !pw) return msg.innerText = "入力してください";
+    function handleLogin(id, pw) {
+    const rows = SpreadsheetApp.openById(MASTER_SHEET_ID).getSheetByName("ユーザー管理").getDataRange().getValues();
     
-    msg.innerText = "認証中...";
-    try {
-      const res = await callGas({ action: "login", id: id, pw: pw });
-      const data = await res.json();
-
-    if (data.success) {
-        session = data; 
-        document.getElementById('displayCompany').innerText = "（" + data.companyCode + " 様）";
-        document.getElementById('view-login').classList.remove('active-view');
-        document.getElementById('view-main').classList.add('active-view');
+    for (let i = 1; i < rows.length; i++) {
+        const rowId   = rows[i][0]; // A列
+        const rowPw   = rows[i][1]; // B列
+        const targetSid = rows[i][2]; // C列（ここがシートID）
+        const compName  = rows[i][3]; // D列
         
-        // ★ここを修正：await をつけて、読み込み完了を待つ
-        await loadToolsData(); 
-      } else {
-        msg.innerText = data.message || "ログイン失敗";
-      }
-    } catch (e) {
-      msg.innerText = "通信エラーが発生しました";
+        if (rowId == id && rowPw == pw) {
+        return {
+            success: true,
+            sId: targetSid,
+            companyCode: compName
+        };
+        }
     }
-  }
+    return { success: false, message: "認証失敗" };
+    }
 
   // 2. 稼働状況データ取得
   async function loadToolsData() {
