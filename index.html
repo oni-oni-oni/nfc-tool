@@ -96,25 +96,29 @@
     loadToolsData(); 
   };
 
-    // switchViewを元のシンプルな形に戻す（リロード処理を削除！）
-    function switchView(v) {
-    const views = ['tools', 'master', 'staff', 'scan'];
-    views.forEach(id => {
-        const el = document.getElementById('view-' + id);
-        const tab = document.getElementById('tab-' + id);
-        if(el) el.style.display = (v === id ? 'block' : 'none');
-        if(tab) tab.classList.toggle('active', v === id);
-    });
-    if (v === 'master') loadMasterData();
-    if (v === 'staff') loadStaffData();
-    if (v === 'scan') loadScanStaffList();
-    }
-
-    async function loadMasterData() {
-    const res = await callGas({ action: "fetchToolMaster", sId: session.sId });
-    const d = await res.json();
-    document.getElementById('masterTableBody').innerHTML = (d||[]).map(r => `<tr><td>${r[0]}</td><td><code>${r[1]}</code></td></tr>`).join('');
+// switchViewを元のシンプルな形に戻す（リロード処理を削除！）
+function switchView(v) {
+  const views = ['tools', 'master', 'staff', 'scan'];
+  views.forEach(id => {
+    const el = document.getElementById('view-' + id);
+    const tab = document.getElementById('tab-' + id);
+    if(el) el.style.display = (v === id ? 'block' : 'none');
+    if(tab) tab.classList.toggle('active', v === id);
+  });
+  if (v === 'master') loadMasterData();
+  if (v === 'staff') loadStaffData();
+  if (v === 'scan') loadScanStaffList();
 }
+
+  function loadToolsData() {
+    google.script.run.withSuccessHandler(function(data) {
+      if(!data || data.length === 0) return;
+      db = data;
+      initF(data.slice(1));
+      draw();
+      document.getElementById('loading-tools').style.display = "none";
+    }).getFullData(sid);
+  }
 
   function initF(rows) {
     var make = (id, col) => {
@@ -188,15 +192,12 @@
     }).bulkUpdateByTagIds(sid, scannedList.map(x => x.tagId), u, p, st);
   }
 
-async function registerToolMaster() {
-  var n = document.getElementById('newToolName').value, t = document.getElementById('newTagId').value;
-  if(!n || !t) return alert("入力してください");
-  const res = await callGas({ action: "addToolMaster", name: n, tag: t, sId: session.sId, folderId: session.folderId });
-  const m = await res.text();
-  alert(m);
-  loadMasterData(); 
-  loadToolsData();
-}
+  function registerToolMaster() {
+    var n = document.getElementById('newToolName').value, t = document.getElementById('newTagId').value;
+    if(!n || !t) return alert("入力してください");
+    google.script.run.withSuccessHandler(m => { alert(m); loadMasterData(); loadToolsData(); }).addToolMaster(n, t, sid);
+  }
+
   function registerStaff() {
     var d = document.getElementById('deptName').value, n = document.getElementById('staffName').value;
     if(!d || !n) return alert("入力してください");
