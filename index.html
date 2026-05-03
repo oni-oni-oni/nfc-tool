@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>道具管理システム</title>
+    <title>道具管理システム (NFCスキャナー)</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body { background-color: #f8f9fa; }
@@ -16,7 +16,7 @@
 <body>
 
 <div class="container py-4">
-    <!-- ログイン画面 -->
+    <!-- 1. ログイン画面 -->
     <div id="view-login" class="view active mt-5">
         <div class="col-md-6 mx-auto card p-4 text-center">
             <h3 class="mb-4 text-primary">道具管理ログイン</h3>
@@ -26,7 +26,7 @@
         </div>
     </div>
 
-    <!-- メイン一覧画面 -->
+    <!-- 2. 道具一覧画面 -->
     <div id="view-list" class="view">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h5 class="fw-bold">📋 道具一覧</h5>
@@ -39,14 +39,14 @@
         </div>
     </div>
 
-    <!-- 登録・編集画面 -->
+    <!-- 3. NFC登録・編集画面 -->
     <div id="view-edit" class="view">
         <div class="card p-3">
             <h5 class="fw-bold mb-3">➕ 道具の登録・編集</h5>
             <input type="text" id="edit-name" class="form-control mb-2" placeholder="道具名">
             <div class="input-group mb-2">
-                <input type="text" id="edit-tag" class="form-control bg-light" readonly placeholder="タグID">
-                <button class="btn btn-secondary" onclick="scanNfc()">タグ読込</button>
+                <input type="text" id="edit-tag" class="form-control bg-light" readonly placeholder="タグID (NFCをかざす)">
+                <button class="btn btn-secondary" onclick="scanNfc()">スキャン開始</button>
             </div>
             <input type="text" id="edit-rem" class="form-control mb-3" placeholder="備考">
             <input type="file" id="edit-img" class="form-control mb-3" accept="image/*" capture="environment">
@@ -55,20 +55,22 @@
     </div>
 </div>
 
+<!-- 下部ナビゲーション -->
 <nav id="nav" class="nav-bar" style="display:none;">
-    <a href="javascript:show('list')">📋 一覧</a>
-    <a href="javascript:show('edit')">➕ 登録</a>
+    <a href="javascript:show('list')" class="text-decoration-none">📋 一覧</a>
+    <a href="javascript:show('edit')" class="text-decoration-none">➕ 登録</a>
 </nav>
 
 <script>
-    // 提供されたURLを組み込みました
     const URL = "https://script.google.com/macros/s/AKfycbz_aAZvAV3kRKlCrhtczqHj4CbdtKUDykMqN5RxZfk2-CHQ392VYcl7yD9wvtlgykL7YA/exec";
     let session = {};
 
+    // 通信共通関数
     async function call(payload) {
         return await fetch(URL, { method: "POST", body: JSON.stringify(payload) });
     }
 
+    // ログイン処理[cite: 1, 2]
     async function login() {
         const id = document.getElementById('user-id').value;
         const pw = document.getElementById('user-pw').value;
@@ -80,9 +82,7 @@
                 document.getElementById('nav').style.display = "flex";
                 show('list');
             } else { alert("IDまたはパスワードが違います"); }
-        } catch (e) {
-            alert("通信エラーが発生しました。デプロイ設定を再確認してください。");
-        }
+        } catch (e) { alert("通信エラー: GASの設定（全員に公開）を確認してください"); }
     }
 
     function show(v) {
@@ -91,17 +91,19 @@
         if (v === 'list') load();
     }
 
+    // 道具一覧読み込み[cite: 1, 2]
     async function load() {
         const res = await call({ action: "fetchItems" });
         const data = await res.json();
         document.getElementById('list-body').innerHTML = data.map(t => `
             <tr onclick="setEdit('${t[1]}','${t[0]}','${t[3]}')">
-                <td><img src="${t[2] || ''}" class="thumb"></td>
+                <td><img src="${t[2] || ''}" class="thumb" onerror="this.src='https://via.placeholder.com/60'"></td>
                 <td><b>${t[0]}</b><br><small class="text-muted">${t[1]}</small></td>
             </tr>
         `).join('');
     }
 
+    // 保存処理（写真付き）[cite: 1, 2]
     async function save() {
         const file = document.getElementById('edit-img').files[0];
         let base64 = "";
@@ -126,13 +128,18 @@
         show('edit');
     }
 
+    // NFC読み取り機能
     async function scanNfc() {
         try {
             const ndef = new NDEFReader();
             await ndef.scan();
-            ndef.onreading = e => { document.getElementById('edit-tag').value = e.serialNumber; };
+            alert("NFCスキャンを開始しました。タグをかざしてください。");
+            ndef.onreading = e => {
+                document.getElementById('edit-tag').value = e.serialNumber;
+                alert("タグを認識しました: " + e.serialNumber);
+            };
         } catch (e) {
-            alert("NFC読み取りに失敗しました。HTTPS接続と対応端末を確認してください。");
+            alert("NFCエラー: HTTPS接続、またはNFC対応端末/ブラウザであることを確認してください。");
         }
     }
 </script>
