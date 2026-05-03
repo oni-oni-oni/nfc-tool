@@ -60,16 +60,21 @@
 </nav>
 
 <script>
-    // 最新のURLに書き換え済み
+// 1. URLを最新に更新
     const GAS_URL = "https://script.google.com/macros/s/AKfycbz_aAZvAV3kRKlCrhtczqHj4CbdtKUDykMqN5RxZfk2-CHQ392VYcl7yD9wvtlgykL7YA/exec";
     let session = { sId: "", folderId: "", cCode: "" };
+
+    // 2. この下の「window.onload」や「loadToolsData()」といった
+    // 自動で実行されるコードをすべて削除してください。
+    // （ボタンを押したときだけ動く handleLogin などだけ残す）
 
     async function callGas(p) { 
         return await fetch(GAS_URL, { method: "POST", body: JSON.stringify(p) }); 
     }
 
     async function handleLogin() {
-        const id = document.getElementById('userId').value, pw = document.getElementById('userPw').value;
+        const id = document.getElementById('userId').value;
+        const pw = document.getElementById('userPw').value;
         const res = await callGas({ action: "login", id, pw });
         const data = await res.json();
         if (data.success) {
