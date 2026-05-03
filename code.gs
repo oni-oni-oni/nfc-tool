@@ -11,26 +11,23 @@ function doPost(e) {
   const ss = SpreadsheetApp.openById(MASTER_SHEET_ID);
 
   try {
-    // ログイン処理
     if (action === "login") {
       const sheet = ss.getSheetByName('社員名簿');
       const data = sheet.getDataRange().getValues();
       for (let i = 1; i < data.length; i++) {
         if (data[i][0].toString() === params.id && data[i][1].toString() === params.pw) {
-          return sendJson({ success: true, sId: data[i][2], folderId: data[i][5], cCode: data[i][4] });
+          return sendJson({ success: true, folderId: data[i][5] });
         }
       }
       return sendJson({ success: false });
     }
 
-    // 道具名簿の全データ取得
-    if (action === "fetchToolMaster") {
+    if (action === "fetchItems") {
       const sheet = ss.getSheetByName('道具名簿');
       return sendJson(sheet.getDataRange().getValues().slice(1));
     }
 
-    // 道具の登録・上書き（画像保存ロジックを含む）
-    if (action === "addToolMaster") {
+    if (action === "saveItem") {
       const sheet = ss.getSheetByName('道具名簿');
       const data = sheet.getDataRange().getValues();
       let rowIndex = -1;
@@ -45,35 +42,20 @@ function doPost(e) {
         imageUrl = "https://drive.google.com/uc?export=view&id=" + file.getId();
       }
 
-      const rowData = [params.name, params.tag, imageUrl, params.remarks];
       if (rowIndex > 0) {
-        sheet.getRange(rowIndex, 1, 1, 4).setValues([rowData]);
-        return ContentService.createTextOutput("更新完了");
+        sheet.getRange(rowIndex, 1, 1, 4).setValues([[params.name, params.tag, imageUrl, params.remarks]]);
+        return ContentService.createTextOutput("更新しました");
       } else {
-        sheet.appendRow(rowData);
-        return ContentService.createTextOutput("新規登録完了");
+        sheet.appendRow([params.name, params.tag, imageUrl, params.remarks]);
+        return ContentService.createTextOutput("新規登録しました");
       }
     }
 
-    // 削除
-    if (action === "deleteToolFull") {
-      const sheet = ss.getSheetByName('道具名簿');
-      const data = sheet.getDataRange().getValues();
-      for (let i = 0; i < data.length; i++) {
-        if (data[i][1] === params.tagId) {
-          sheet.deleteRow(i + 1);
-          return ContentService.createTextOutput("削除完了");
-        }
-      }
-    }
-
-    // 社員登録
-    if (action === "registerEmployee") {
+    if (action === "regEmployee") {
       const sheet = ss.getSheetByName('社員名簿');
-      sheet.appendRow([params.newId, params.newPw, params.newSId, "", params.newCCode, params.newFolderId]);
-      return ContentService.createTextOutput("社員登録完了");
+      sheet.appendRow([params.newId, params.newPw, params.newSId, "", "C001", params.newFolderId]);
+      return ContentService.createTextOutput("社員を登録しました");
     }
-
   } catch (err) {
     return ContentService.createTextOutput("Error: " + err.message);
   }
