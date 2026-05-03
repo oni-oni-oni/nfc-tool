@@ -16,7 +16,7 @@
 <body>
 
 <div class="container py-4">
-    <!-- ログイン画面（初期表示） -->
+    <!-- ログイン画面 -->
     <div id="view-login" class="view active mt-5">
         <div class="col-md-6 mx-auto card p-4 text-center">
             <h3 class="mb-4 text-primary">道具管理ログイン</h3>
@@ -61,7 +61,7 @@
 </nav>
 
 <script>
-    // 【重要】デプロイ後のURLをここに入れてください
+    // 提供されたURLを組み込みました
     const URL = "https://script.google.com/macros/s/AKfycbz_aAZvAV3kRKlCrhtczqHj4CbdtKUDykMqN5RxZfk2-CHQ392VYcl7yD9wvtlgykL7YA/exec";
     let session = {};
 
@@ -72,13 +72,17 @@
     async function login() {
         const id = document.getElementById('user-id').value;
         const pw = document.getElementById('user-pw').value;
-        const res = await call({ action: "login", id, pw });
-        const data = await res.json();
-        if (data.success) {
-            session = data;
-            document.getElementById('nav').style.display = "flex";
-            show('list');
-        } else { alert("IDまたはパスワードが違います"); }
+        try {
+            const res = await call({ action: "login", id, pw });
+            const data = await res.json();
+            if (data.success) {
+                session = data;
+                document.getElementById('nav').style.display = "flex";
+                show('list');
+            } else { alert("IDまたはパスワードが違います"); }
+        } catch (e) {
+            alert("通信エラーが発生しました。デプロイ設定を再確認してください。");
+        }
     }
 
     function show(v) {
@@ -123,8 +127,13 @@
     }
 
     async function scanNfc() {
-        const ndef = new NDEFReader(); await ndef.scan();
-        ndef.onreading = e => { document.getElementById('edit-tag').value = e.serialNumber; };
+        try {
+            const ndef = new NDEFReader();
+            await ndef.scan();
+            ndef.onreading = e => { document.getElementById('edit-tag').value = e.serialNumber; };
+        } catch (e) {
+            alert("NFC読み取りに失敗しました。HTTPS接続と対応端末を確認してください。");
+        }
     }
 </script>
 </body>
