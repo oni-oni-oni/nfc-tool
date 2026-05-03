@@ -2,145 +2,158 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>道具管理システム (NFCスキャナー)</title>
+    <title>道具管理システム</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background-color: #f8f9fa; }
-        .view { display: none; }
-        .active { display: block; }
-        .card { border-radius: 15px; border: none; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        .nav-bar { position: fixed; bottom: 0; width: 100%; background: white; display: flex; justify-content: space-around; padding: 12px; border-top: 1px solid #ddd; }
-        img.thumb { width: 60px; height: 60px; object-fit: cover; border-radius: 8px; }
+        body { background-color: #f8f9fa; padding-bottom: 80px; }
+        .card-custom { border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); padding: 20px; margin-top: 15px; }
+        .nav-fixed { position: fixed; bottom: 0; width: 100%; background: white; border-top: 1px solid #ddd; display: flex; justify-content: space-around; padding: 12px 0; z-index: 1000; }
+        .view-section { display: none; }
+        .active-view { display: block; }
+        img.thumb { width: 50px; height: 50px; object-fit: cover; border-radius: 5px; background: #eee; }
     </style>
 </head>
 <body>
 
-<div class="container py-4">
-    <!-- 1. ログイン画面 -->
-    <div id="view-login" class="view active mt-5">
-        <div class="col-md-6 mx-auto card p-4 text-center">
-            <h3 class="mb-4 text-primary">道具管理ログイン</h3>
-            <input type="text" id="user-id" class="form-control mb-3" placeholder="ユーザーID">
-            <input type="password" id="user-pw" class="form-control mb-4" placeholder="パスワード">
-            <button class="btn btn-primary w-100 py-2" onclick="login()">ログイン</button>
+<div class="container" id="app">
+    <div id="view-login" class="view-section active-view mt-5 text-center">
+        <div class="card card-custom border-0">
+            <h3 class="fw-bold mb-4">🔑 Login</h3>
+            <input type="text" id="userId" class="form-control mb-3" placeholder="ユーザーID">
+            <input type="password" id="userPw" class="form-control mb-4" placeholder="パスワード">
+            <button class="btn btn-primary w-100 py-3" onclick="handleLogin()">ログイン</button>
+            <p id="loginMsg" class="text-danger mt-3 small"></p>
         </div>
     </div>
 
-    <!-- 2. 道具一覧画面 -->
-    <div id="view-list" class="view">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="fw-bold">📋 道具一覧</h5>
-            <button class="btn btn-sm btn-outline-secondary" onclick="location.reload()">ログアウト</button>
+    <div id="view-register" class="view-section">
+        <div class="card card-custom border-0 mb-4">
+            <h5 class="fw-bold">➕ 道具の登録・編集</h5>
+            <div class="row g-2">
+                <div class="col-8"><input type="text" id="regName" class="form-control" placeholder="道具名"></div>
+                <div class="col-4"><button class="btn btn-secondary w-100" onclick="scanSingleTag()">スキャン</button></div>
+            </div>
+            <input type="text" id="regTag" class="form-control my-2 bg-light" readonly placeholder="タグID (スキャンしてください)">
+            <input type="text" id="regRemarks" class="form-control mb-2" placeholder="備考・メモ">
+            <input type="file" id="regImage" class="form-control mb-2" accept="image/*" capture="environment">
+            <button class="btn btn-success w-100" id="btnReg" onclick="registerTool()">名簿に保存</button>
         </div>
         <div class="table-responsive">
-            <table class="table bg-white rounded shadow-sm">
-                <tbody id="list-body"></tbody>
+            <table class="table table-hover align-middle bg-white rounded shadow-sm">
+                <thead class="table-light"><tr><th>写真</th><th>道具名</th><th>タグID</th><th>操作</th></tr></thead>
+                <tbody id="toolMasterTbd"></tbody>
             </table>
         </div>
     </div>
-
-    <!-- 3. NFC登録・編集画面 -->
-    <div id="view-edit" class="view">
-        <div class="card p-3">
-            <h5 class="fw-bold mb-3">➕ 道具の登録・編集</h5>
-            <input type="text" id="edit-name" class="form-control mb-2" placeholder="道具名">
-            <div class="input-group mb-2">
-                <input type="text" id="edit-tag" class="form-control bg-light" readonly placeholder="タグID (NFCをかざす)">
-                <button class="btn btn-secondary" onclick="scanNfc()">スキャン開始</button>
-            </div>
-            <input type="text" id="edit-rem" class="form-control mb-3" placeholder="備考">
-            <input type="file" id="edit-img" class="form-control mb-3" accept="image/*" capture="environment">
-            <button class="btn btn-success w-100 py-2" onclick="save()">名簿に保存</button>
-        </div>
-    </div>
+    
+    <div id="view-scan" class="view-section"><div class="p-5 text-center">スキャン画面 (実装中)</div></div>
+    <div id="view-list" class="view-section"><div class="p-5 text-center">一覧画面 (実装中)</div></div>
 </div>
 
-<!-- 下部ナビゲーション -->
-<nav id="nav" class="nav-bar" style="display:none;">
-    <a href="javascript:show('list')" class="text-decoration-none">📋 一覧</a>
-    <a href="javascript:show('edit')" class="text-decoration-none">➕ 登録</a>
+<nav class="nav-fixed" id="mainNav" style="display:none;">
+    <a href="#" onclick="switchView('scan')">📡</a>
+    <a href="#" onclick="switchView('list')">📋</a>
+    <a href="#" onclick="switchView('register')">➕</a>
+    <a href="#" onclick="location.reload()">🚪</a>
 </nav>
 
 <script>
-    const URL = "https://script.google.com/macros/s/AKfycbz_aAZvAV3kRKlCrhtczqHj4CbdtKUDykMqN5RxZfk2-CHQ392VYcl7yD9wvtlgykL7YA/exec";
-    let session = {};
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbxqFLv6V-coHWlFoKG8phH3pDycg1h5-DDhOImhCTUEZ520qND-RcsZtrcl0qLCL3aCZg/exec";[cite: 2]
+    let session = { sId: "", folderId: "", cCode: "" };[cite: 2]
 
-    // 通信共通関数
-    async function call(payload) {
-        return await fetch(URL, { method: "POST", body: JSON.stringify(payload) });
+    async function callGas(p) { return await fetch(GAS_URL, { method: "POST", body: JSON.stringify(p) }); }[cite: 2]
+
+    async function handleLogin() {
+        const id = document.getElementById('userId').value, pw = document.getElementById('userPw').value;[cite: 2]
+        const res = await callGas({ action: "login", id, pw });[cite: 2]
+        const data = await res.json();[cite: 2]
+        if (data.success) {
+            session = data; // ここで folderId も session に格納される[cite: 2]
+            document.getElementById('mainNav').style.display = "flex";[cite: 2]
+            switchView('register');[cite: 2]
+        } else { alert("認証失敗"); }[cite: 2]
     }
 
-    // ログイン処理[cite: 1, 2]
-    async function login() {
-        const id = document.getElementById('user-id').value;
-        const pw = document.getElementById('user-pw').value;
-        try {
-            const res = await call({ action: "login", id, pw });
-            const data = await res.json();
-            if (data.success) {
-                session = data;
-                document.getElementById('nav').style.display = "flex";
-                show('list');
-            } else { alert("IDまたはパスワードが違います"); }
-        } catch (e) { alert("通信エラー: GASの設定（全員に公開）を確認してください"); }
+    function switchView(v) {
+        document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active-view'));[cite: 2]
+        document.getElementById('view-' + v).classList.add('active-view');[cite: 2]
+        if (v === 'register') loadToolMaster();[cite: 2]
     }
 
-    function show(v) {
-        document.querySelectorAll('.view').forEach(e => e.classList.remove('active'));
-        document.getElementById('view-' + v).classList.add('active');
-        if (v === 'list') load();
-    }
-
-    // 道具一覧読み込み[cite: 1, 2]
-    async function load() {
-        const res = await call({ action: "fetchItems" });
-        const data = await res.json();
-        document.getElementById('list-body').innerHTML = data.map(t => `
-            <tr onclick="setEdit('${t[1]}','${t[0]}','${t[3]}')">
-                <td><img src="${t[2] || ''}" class="thumb" onerror="this.src='https://via.placeholder.com/60'"></td>
-                <td><b>${t[0]}</b><br><small class="text-muted">${t[1]}</small></td>
-            </tr>
-        `).join('');
-    }
-
-    // 保存処理（写真付き）[cite: 1, 2]
-    async function save() {
-        const file = document.getElementById('edit-img').files[0];
-        let base64 = "";
-        if (file) base64 = await new Promise(r => { const rd = new FileReader(); rd.onload = e => r(e.target.result); rd.readAsDataURL(file); });
+    async function registerTool() {
+        const btn = document.getElementById('btnReg');[cite: 2]
+        btn.disabled = true; btn.innerText = "処理中...";[cite: 2]
         
-        const res = await call({
-            action: "saveItem",
-            folderId: session.folderId,
-            name: document.getElementById('edit-name').value,
-            tag: document.getElementById('edit-tag').value,
-            remarks: document.getElementById('edit-rem').value,
-            imageBlob: base64
-        });
-        alert(await res.text());
-        show('list');
-    }
-
-    function setEdit(tag, name, rem) {
-        document.getElementById('edit-tag').value = tag;
-        document.getElementById('edit-name').value = name;
-        document.getElementById('edit-rem').value = rem || "";
-        show('edit');
-    }
-
-    // NFC読み取り機能
-    async function scanNfc() {
-        try {
-            const ndef = new NDEFReader();
-            await ndef.scan();
-            alert("NFCスキャンを開始しました。タグをかざしてください。");
-            ndef.onreading = e => {
-                document.getElementById('edit-tag').value = e.serialNumber;
-                alert("タグを認識しました: " + e.serialNumber);
-            };
-        } catch (e) {
-            alert("NFCエラー: HTTPS接続、またはNFC対応端末/ブラウザであることを確認してください。");
+        const imgFile = document.getElementById('regImage').files[0];[cite: 2]
+        let base64 = "";
+        if (imgFile) {
+            base64 = await new Promise(r => { const rd = new FileReader(); rd.onload = e => r(e.target.result); rd.readAsDataURL(imgFile); });[cite: 2]
         }
+
+        try {
+            const res = await callGas({
+                action: "addToolMaster", 
+                sId: session.sId, 
+                folderId: session.folderId, // ★sessionから渡す[cite: 2]
+                cCode: session.cCode,
+                name: document.getElementById('regName').value, 
+                tag: document.getElementById('regTag').value,
+                remarks: document.getElementById('regRemarks').value, 
+                imageBlob: base64
+            });[cite: 2]
+            const msg = await res.text();[cite: 2]
+            alert(msg);
+            
+            if(msg.includes("完了")) {
+                document.getElementById('regName').value = ""; 
+                document.getElementById('regTag').value = "";
+                document.getElementById('regRemarks').value = ""; 
+                document.getElementById('regImage').value = "";[cite: 2]
+                btn.innerText = "名簿に保存"; 
+                btn.className = "btn btn-success w-100";[cite: 2]
+                loadToolMaster();[cite: 2]
+            }
+        } catch (e) { alert("エラーが発生しました"); }[cite: 2]
+        btn.disabled = false;[cite: 2]
+    }
+
+    async function loadToolMaster() {
+        const res = await callGas({ action: "fetchToolMaster", sId: session.sId });[cite: 2]
+        const tools = await res.json();[cite: 2]
+        document.getElementById('toolMasterTbd').innerHTML = tools.map(t => `
+            <tr>
+                <td><img src="${t[2] || ''}" class="thumb"></td>
+                <td><b>${t[0]}</b></td>
+                <td><small class="text-muted">${t[1]}</small></td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary me-1" onclick="editTool('${t[1]}','${t[0]}','${t[3]}')">編集</button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteTool('${t[1]}')">削</button>
+                </td>
+            </tr>
+        `).join('');[cite: 2]
+    }
+
+    function editTool(tag, name, rem) {
+        document.getElementById('regTag').value = tag;[cite: 2]
+        document.getElementById('regName').value = name;[cite: 1, 2]
+        document.getElementById('regRemarks').value = rem || "";[cite: 2]
+        document.getElementById('btnReg').innerText = "上書き保存";[cite: 2]
+        document.getElementById('btnReg').className = "btn btn-warning w-100";[cite: 2]
+        window.scrollTo(0,0);[cite: 2]
+    }
+
+    async function deleteTool(tagId) {
+        if(!confirm("この道具を完全に削除しますか？")) return;[cite: 2]
+        const res = await callGas({ action: "deleteToolFull", sId: session.sId, tagId: tagId });[cite: 2]
+        alert(await res.text());[cite: 2]
+        loadToolMaster();[cite: 2]
+    }
+
+    async function scanSingleTag() {
+        try {
+            const ndef = new NDEFReader(); await ndef.scan();[cite: 2]
+            ndef.onreading = e => { document.getElementById('regTag').value = e.serialNumber; };[cite: 2]
+        } catch(e) { alert("NFCスキャンに失敗しました"); }[cite: 2]
     }
 </script>
 </body>
