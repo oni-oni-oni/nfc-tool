@@ -23,7 +23,8 @@ function doPost(e) {
             success: true, 
             sId: data[i][2], 
             compName: data[i][4] || "Guest",
-            cCode: data[i][0]
+            cCode: data[i][0],
+            folderId: data[i][5] // F列のフォルダIDをフロントへ渡す
           })).setMimeType(ContentService.MimeType.JSON);
         }
       }
@@ -47,59 +48,43 @@ function doPost(e) {
       return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(ContentService.MimeType.JSON);
     }
 
-    // --- 4. 道具マスター登録・編集（修正版） ---
+    // --- 4. 道具マスター登録・編集 ---
     if (action === "addToolMaster") {
       const ss = SpreadsheetApp.openById(sId);
       const toolSheet = ss.getSheetByName("道具名簿");
       const data = toolSheet.getDataRange().getValues();
-      const tagId = params.tag.toString().trim(); 
+      const tagId = params.tag.toString().trim();
       
       let targetRow = -1;
       for (let i = 1; i < data.length; i++) {
-        if (data[i][1].toString().trim() === tagId) {
+        if (data[i][1] && data[i][1].toString().trim() === tagId) {
           targetRow = i + 1;
           break;
         }
       }
 
-      let imageUrl = params.existingUrl || ""; 
-      // 画像データがある場合のみ保存処理を行う
-      if (params.imageBlob && params.imageBlob.includes("base64,")) {
-        const masterSS = SpreadsheetApp.openById(MASTER_SHEET_ID);
-        const userData = masterSS.getSheets()[0].getDataRange().getValues();
-        let folderId = "";
-        for (let i = 1; i < userData.length; i++) {
-          if (userData[i][0].toString().trim() === params.cCode.toString().trim()) {
-            folderId = userData[i][5]; // マスターシートのF列
-            break;
-          }
-        }
-
-        if (folderId) {
-          try {
-            const folder = DriveApp.getFolderById(folderId);
-            const contentType = params.imageBlob.match(/^data:(.*);base64,/)[1];
-            const base64Data = params.imageBlob.split(",")[1];
-            const blob = Utilities.newBlob(Utilities.base64Decode(base64Data), contentType, params.name + "_" + tagId + ".jpg");
-            const file = folder.createFile(blob);
-            file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-            
-            // 確実に表示可能なURL形式
-            imageUrl = "https://drive.google.com/uc?export=view&id=" + file.getId();
-          } catch(e) {
-            console.error("画像保存エラー: " + e.message);
-          }
+      let imageUrl = params.existingUrl || "";
+      // フロントから送られた folderId を使用して画像保存
+      if (params.imageBlob && params.imageBlob.includes("base64,") && params.folderId) {
+        try {
+          const folder = DriveApp.getFolderById(params.folderId);
+          const contentType = params.imageBlob.match(/^data:(.*);base64,/)[1];
+          const base64Data = params.imageBlob.split(",")[1];
+          const blob = Utilities.newBlob(Utilities.base64Decode(base64Data), contentType, params.name + "_" + tagId + ".jpg");
+          const file = folder.createFile(blob);
+          file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+          imageUrl = "https://drive.google.com/uc?export=view&id=" + file.getId();
+        } catch(e) {
+          console.error("画像保存エラー: " + e.message);
         }
       }
 
       if (targetRow !== -1) {
-        // 【上書き】C列(3列目)に画像、D列(4列目)に備考
         toolSheet.getRange(targetRow, 1).setValue(params.name);
         toolSheet.getRange(targetRow, 3).setValue(imageUrl);
         toolSheet.getRange(targetRow, 4).setValue(params.remarks);
         return ContentService.createTextOutput("上書き完了");
       } else {
-        // 【新規】
         toolSheet.appendRow([params.name, tagId, imageUrl, params.remarks]);
         const statusSheet = ss.getSheets()[0];
         statusSheet.appendRow([statusSheet.getLastRow(), params.name, "本部保管", "-", "保管中", tagId, new Date()]);
@@ -107,96 +92,31 @@ function doPost(e) {
       }
     }
 
+    // --- 5. 削除機能 ---
     if (action === "deleteToolFull") {
-      try {
-        const ss = SpreadsheetApp.openById(sId);
-        const targetTag = params.tagId ? params.tagId.toString().trim().toUpperCase() : "";
-        
-        if (!targetTag) return ContentService.createTextOutput("エラー: タグIDが空です");
-
-        let mCount = 0;
-        let sCount = 0;
-        let log = [];
-
-        // --- A. 道具名簿 ---
-        const masterSheet = ss.getSheetByName("道具名簿");
-        if (!masterSheet) {
-          log.push("「道具名簿」シートが見つかりません");
-        } else {
-          const mData = masterSheet.getDataRange().getValues();
-          for (let i = mData.length - 1; i >= 1; i--) {
-            let sheetTag = mData[i][1] ? mData[i][1].toString().trim().toUpperCase() : "";
-            if (sheetTag === targetTag) {
-              masterSheet.deleteRow(i + 1);
-              mCount++;
-            }
-          }
+      const ss = SpreadsheetApp.openById(sId);
+      const targetTag = params.tagId ? params.tagId.toString().trim().toUpperCase() : "";
+      const masterSheet = ss.getSheetByName("道具名簿");
+      if (masterSheet) {
+        const mData = masterSheet.getDataRange().getValues();
+        for (let i = mData.length - 1; i >= 1; i--) {
+          if (mData[i][1] && mData[i][1].toString().trim().toUpperCase() === targetTag) masterSheet.deleteRow(i + 1);
         }
-
-        // --- B. 稼働状況（1枚目のシート） ---
-        const statusSheet = ss.getSheets()[0];
-        if (!statusSheet) {
-          log.push("稼働状況シートが見つかりません");
-        } else {
-          const sData = statusSheet.getDataRange().getValues();
-          for (let i = sData.length - 1; i >= 1; i--) {
-            let sheetTag = sData[i][5] ? sData[i][5].toString().trim().toUpperCase() : "";
-            if (sheetTag === targetTag) {
-              statusSheet.deleteRow(i + 1);
-              sCount++;
-            }
-          }
-        }
-
-        let resMsg = "完了: 名簿" + mCount + "件 / 履歴" + sCount + "件";
-        if (log.length > 0) resMsg += "\n警告: " + log.join(", ");
-        
-        return ContentService.createTextOutput(resMsg);
-
-      } catch (e) {
-        return ContentService.createTextOutput("GAS内部エラー: " + e.message);
       }
+      const statusSheet = ss.getSheets()[0];
+      if (statusSheet) {
+        const sData = statusSheet.getDataRange().getValues();
+        for (let i = sData.length - 1; i >= 1; i--) {
+          if (sData[i][5] && sData[i][5].toString().trim().toUpperCase() === targetTag) statusSheet.deleteRow(i + 1);
+        }
+      }
+      return ContentService.createTextOutput("削除完了");
     }
 
-    // --- fetchToolMaster（読み込み中対策） ---
-    if (action === "fetchToolMaster") {
-      try {
-        const ss = SpreadsheetApp.openById(sId);
-        const sheet = ss.getSheetByName("道具名簿");
-        if (!sheet) return ContentService.createTextOutput(JSON.stringify([])).setMimeType(ContentService.MimeType.JSON);
-        const data = sheet.getDataRange().getValues();
-        return ContentService.createTextOutput(JSON.stringify(data.slice(1))).setMimeType(ContentService.MimeType.JSON);
-      } catch (e) {
-        return ContentService.createTextOutput(JSON.stringify([])).setMimeType(ContentService.MimeType.JSON);
-      }
-    }
-
-    // --- 6. その他（既存ロジック） ---
+    // --- 6. 一括更新 ---
     if (action === "update") {
       const res = bulkUpdateByTagIds(sId, params.tagIds, params.userName, params.placeName, params.status);
       return ContentService.createTextOutput(res).setMimeType(ContentService.MimeType.TEXT);
-    }
-    if (action === "fetchStaff") {
-      const ss = SpreadsheetApp.openById(sId);
-      const sheet = ss.getSheetByName("社員名簿");
-      const staffData = sheet.getDataRange().getValues();
-      staffData.shift();
-      return ContentService.createTextOutput(JSON.stringify(staffData)).setMimeType(ContentService.MimeType.JSON);
-    }
-    if (action === "addMyStaff") {
-      const ss = SpreadsheetApp.openById(sId);
-      const sheet = ss.getSheetByName("社員名簿");
-      sheet.appendRow([params.cCode, params.dept, params.name]);
-      return ContentService.createTextOutput("登録完了");
-    }
-    if (action === "deleteStaff") {
-      const ss = SpreadsheetApp.openById(sId);
-      const sheet = ss.getSheetByName("社員名簿");
-      const staffData = sheet.getDataRange().getValues();
-      for (let i = staffData.length - 1; i >= 1; i--) {
-        if (staffData[i][2] === params.name) sheet.deleteRow(i + 1);
-      }
-      return ContentService.createTextOutput("削除完了");
     }
   } catch (err) {
     return ContentService.createTextOutput("Error: " + err.message).setMimeType(ContentService.MimeType.TEXT);
@@ -223,4 +143,3 @@ function bulkUpdateByTagIds(sId, tagIds, userName, placeName, status) {
   });
   return count + "件更新完了";
 }
-

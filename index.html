@@ -38,7 +38,6 @@
             <input type="file" id="regImage" class="form-control mb-2" accept="image/*" capture="environment">
             <button class="btn btn-success w-100" id="btnReg" onclick="registerTool()">名簿に保存</button>
         </div>
-
         <div class="table-responsive">
             <table class="table table-hover align-middle bg-white rounded shadow-sm">
                 <thead class="table-light"><tr><th>写真</th><th>道具名</th><th>タグID</th><th>操作</th></tr></thead>
@@ -46,9 +45,9 @@
             </table>
         </div>
     </div>
-
-    <div id="view-scan" class="view-section">...</div>
-    <div id="view-list" class="view-section">...</div>
+    
+    <div id="view-scan" class="view-section"><div class="p-5 text-center">スキャン画面 (実装中)</div></div>
+    <div id="view-list" class="view-section"><div class="p-5 text-center">一覧画面 (実装中)</div></div>
 </div>
 
 <nav class="nav-fixed" id="mainNav" style="display:none;">
@@ -59,85 +58,102 @@
 </nav>
 
 <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbxqFLv6V-coHWlFoKG8phH3pDycg1h5-DDhOImhCTUEZ520qND-RcsZtrcl0qLCL3aCZg/exec";    let session = { sId: "", folderId: "" };
-    let toolMap = {};
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbxqFLv6V-coHWlFoKG8phH3pDycg1h5-DDhOImhCTUEZ520qND-RcsZtrcl0qLCL3aCZg/exec";[cite: 2]
+    let session = { sId: "", folderId: "", cCode: "" };[cite: 2]
 
-    async function callGas(p) { return await fetch(GAS_URL, { method: "POST", body: JSON.stringify(p) }); }
+    async function callGas(p) { return await fetch(GAS_URL, { method: "POST", body: JSON.stringify(p) }); }[cite: 2]
 
     async function handleLogin() {
-        const id = document.getElementById('userId').value, pw = document.getElementById('userPw').value;
-        const res = await callGas({ action: "login", id, pw });
-        const data = await res.json();
+        const id = document.getElementById('userId').value, pw = document.getElementById('userPw').value;[cite: 2]
+        const res = await callGas({ action: "login", id, pw });[cite: 2]
+        const data = await res.json();[cite: 2]
         if (data.success) {
-            session = data;
-            document.getElementById('mainNav').style.display = "flex";
-            switchView('register');
-        } else { alert("認証失敗"); }
+            session = data; // ここで folderId も session に格納される[cite: 2]
+            document.getElementById('mainNav').style.display = "flex";[cite: 2]
+            switchView('register');[cite: 2]
+        } else { alert("認証失敗"); }[cite: 2]
     }
 
     function switchView(v) {
-        document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active-view'));
-        document.getElementById('view-' + v).classList.add('active-view');
-        if (v === 'register') loadToolMaster();
+        document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active-view'));[cite: 2]
+        document.getElementById('view-' + v).classList.add('active-view');[cite: 2]
+        if (v === 'register') loadToolMaster();[cite: 2]
     }
 
     async function registerTool() {
-        const btn = document.getElementById('btnReg');
-        btn.disabled = true; btn.innerText = "処理中...";
+        const btn = document.getElementById('btnReg');[cite: 2]
+        btn.disabled = true; btn.innerText = "処理中...";[cite: 2]
         
-        const imgFile = document.getElementById('regImage').files[0];
+        const imgFile = document.getElementById('regImage').files[0];[cite: 2]
         let base64 = "";
         if (imgFile) {
-            base64 = await new Promise(r => { const rd = new FileReader(); rd.onload = e => r(e.target.result); rd.readAsDataURL(imgFile); });
+            base64 = await new Promise(r => { const rd = new FileReader(); rd.onload = e => r(e.target.result); rd.readAsDataURL(imgFile); });[cite: 2]
         }
 
         try {
             const res = await callGas({
-                action: "addToolMaster", sId: session.sId, folderId: session.folderId,
-                name: document.getElementById('regName').value, tag: document.getElementById('regTag').value,
-                remarks: document.getElementById('regRemarks').value, imageBlob: base64
-            });
-            const msg = await res.text();
-            alert(msg); // ここに「上書き完了！ URL: ...」が表示される
+                action: "addToolMaster", 
+                sId: session.sId, 
+                folderId: session.folderId, // ★sessionから渡す[cite: 2]
+                cCode: session.cCode,
+                name: document.getElementById('regName').value, 
+                tag: document.getElementById('regTag').value,
+                remarks: document.getElementById('regRemarks').value, 
+                imageBlob: base64
+            });[cite: 2]
+            const msg = await res.text();[cite: 2]
+            alert(msg);
             
             if(msg.includes("完了")) {
-                document.getElementById('regName').value = ""; document.getElementById('regTag').value = "";
-                document.getElementById('regRemarks').value = ""; document.getElementById('regImage').value = "";
-                btn.innerText = "名簿に保存"; btn.className = "btn btn-success w-100";
-                loadToolMaster();
+                document.getElementById('regName').value = ""; 
+                document.getElementById('regTag').value = "";
+                document.getElementById('regRemarks').value = ""; 
+                document.getElementById('regImage').value = "";[cite: 2]
+                btn.innerText = "名簿に保存"; 
+                btn.className = "btn btn-success w-100";[cite: 2]
+                loadToolMaster();[cite: 2]
             }
-        } catch (e) { alert("エラーが発生しました"); }
-        btn.disabled = false;
+        } catch (e) { alert("エラーが発生しました"); }[cite: 2]
+        btn.disabled = false;[cite: 2]
     }
 
     async function loadToolMaster() {
-        const res = await callGas({ action: "fetchToolMaster", sId: session.sId });
-        const tools = await res.json();
+        const res = await callGas({ action: "fetchToolMaster", sId: session.sId });[cite: 2]
+        const tools = await res.json();[cite: 2]
         document.getElementById('toolMasterTbd').innerHTML = tools.map(t => `
             <tr>
-                <td><img src="${t[3] || ''}" class="thumb"></td>
+                <td><img src="${t[2] || ''}" class="thumb"></td>
                 <td><b>${t[0]}</b></td>
                 <td><small class="text-muted">${t[1]}</small></td>
                 <td>
-                    <button class="btn btn-sm btn-outline-primary me-1" onclick="editTool('${t[1]}','${t[0]}','${t[4]}')">編集</button>
+                    <button class="btn btn-sm btn-outline-primary me-1" onclick="editTool('${t[1]}','${t[0]}','${t[3]}')">編集</button>
                     <button class="btn btn-sm btn-outline-danger" onclick="deleteTool('${t[1]}')">削</button>
                 </td>
             </tr>
-        `).join('');
+        `).join('');[cite: 2]
     }
 
     function editTool(tag, name, rem) {
-        document.getElementById('regTag').value = tag;
-        document.getElementById('regName').value = name;
-        document.getElementById('regRemarks').value = rem || "";
-        document.getElementById('btnReg').innerText = "上書き保存";
-        document.getElementById('btnReg').className = "btn btn-warning w-100";
-        window.scrollTo(0,0);
+        document.getElementById('regTag').value = tag;[cite: 2]
+        document.getElementById('regName').value = name;[cite: 1, 2]
+        document.getElementById('regRemarks').value = rem || "";[cite: 2]
+        document.getElementById('btnReg').innerText = "上書き保存";[cite: 2]
+        document.getElementById('btnReg').className = "btn btn-warning w-100";[cite: 2]
+        window.scrollTo(0,0);[cite: 2]
+    }
+
+    async function deleteTool(tagId) {
+        if(!confirm("この道具を完全に削除しますか？")) return;[cite: 2]
+        const res = await callGas({ action: "deleteToolFull", sId: session.sId, tagId: tagId });[cite: 2]
+        alert(await res.text());[cite: 2]
+        loadToolMaster();[cite: 2]
     }
 
     async function scanSingleTag() {
-        const ndef = new NDEFReader(); await ndef.scan();
-        ndef.onreading = e => { document.getElementById('regTag').value = e.serialNumber; };
+        try {
+            const ndef = new NDEFReader(); await ndef.scan();[cite: 2]
+            ndef.onreading = e => { document.getElementById('regTag').value = e.serialNumber; };[cite: 2]
+        } catch(e) { alert("NFCスキャンに失敗しました"); }[cite: 2]
     }
 </script>
 </body>
