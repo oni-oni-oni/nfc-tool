@@ -1,17 +1,5 @@
 const MASTER_SHEET_ID = '1_z9SacqBnkhj-VeD5EQhJHiAj38l2H-M60j_ikgGYbA';
-function doGet(e) {
-  // index.htmlを読み込み、スプレッドシートの値を埋め込めるようにする
-  const template = HtmlService.createTemplateFromFile('index');
-  
-  // ログイン後に必要な変数を初期化（エラー防止）
-  template.sheetId = ""; 
-  template.companyCode = "未ログイン";
-  
-  return template.evaluate()
-    .setTitle('道具管理システム')
-    .addMetaTag('viewport', 'width=device-width, initial-scale=1')
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL); // 外部連携しやすくする
-}
+
 function doPost(e) {
   let params;
   try {
@@ -119,3 +107,52 @@ function doPost(e) {
 }
 
 function test(){ DriveApp.getRootFolder(); }
+
+
+// --- 画面表示用 ---
+function doGet(e) {
+  const template = HtmlService.createTemplateFromFile('index');
+  // 初期表示用の空変数
+  template.sheetId = ""; 
+  template.companyCode = "未ログイン";
+  return template.evaluate()
+    .setTitle('道具管理システム')
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+// --- HTML側から google.script.run で呼び出される関数群 ---
+
+function getFullData(sId) {
+  // 稼働状況（シート1枚目）を取得
+  const data = SpreadsheetApp.openById(sId).getSheets()[0].getDataRange().getValues();
+  return data;
+}
+
+function getToolMasterList(sId) {
+  // 道具名簿を取得
+  const data = SpreadsheetApp.openById(sId).getSheetByName("道具名簿").getDataRange().getValues();
+  return data.slice(1); // ヘッダーを除いて返す
+}
+
+function getStaffData(sId) {
+  // 社員名簿を取得
+  const data = SpreadsheetApp.openById(sId).getSheetByName("社員名簿").getDataRange().getValues();
+  return data.slice(1);
+}
+
+function bulkUpdateByTagIds(sId, tagIds, userName, place, status) {
+  const sheet = SpreadsheetApp.openById(sId).getSheets()[0];
+  const now = new Date();
+  tagIds.forEach(id => {
+    // 履歴を追記
+    sheet.appendRow([status, "...", place, userName, status, id, now]);
+  });
+  return "✅ " + tagIds.length + "件の更新が完了しました";
+}
+
+function addToolMaster(name, tag, sId) {
+  const sheet = SpreadsheetApp.openById(sId).getSheetByName("道具名簿");
+  sheet.appendRow([name, tag, "", "", ""]);
+  return "✅ 登録完了";
+}
