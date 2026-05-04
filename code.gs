@@ -1,67 +1,109 @@
 const MASTER_SHEET_ID = '1_z9SacqBnkhj-VeD5EQhJHiAj38l2H-M60j_ikgGYbA';
 
 function doPost(e) {
-// 通信がない状態で実行されたら何もしない
-  if (!e || !e.postData || !e.postData.contents) {
-    return ContentService.createTextOutput("No data").setMimeType(ContentService.MimeType.TEXT);
-  }
-  
-  const p = JSON.parse(e.postData.contents);
-  let res;
-  switch (p.action) {
-    case "login":           res = handleLogin(p.id, p.pw); break;
-    case "fetchData":       res = getD(p.sId, "稼働状況"); break;
-    case "fetchToolMaster": res = getD(p.sId, "道具名簿"); break;
-    case "fetchStaff":      res = getD(p.sId, "社員名簿"); break;
-    case "addToolMaster":   res = addM(p.sId, [p.name, p.tag]); break;
-    case "addStaff":        res = addS(p.sId, p.dept, p.name, p.companyCode); break;
-    // switch文の中にケースを追加
-    case "deleteTool": res = deleteRow(p.sId, "道具名簿", p.name); break;
-    default:                res = {success:false};
-  }
-  return ContentService.createTextOutput(JSON.stringify(res)).setMimeType(ContentService.MimeType.JSON);
-}
-
-function handleLogin(id, pw) {
-  const rows = SpreadsheetApp.openById(MASTER_SHEET_ID).getSheetByName("ユーザー管理").getDataRange().getValues();
-  for (let i = 1; i < rows.length; i++) {
-    if (rows[i][0] == id && rows[i][1] == pw) {
-      return { success: true, sId: rows[i][2], companyCode: rows[i][3] };
-    }
-  }
-  return { success: false, message: "認証失敗" };
-}
-
-function getD(sId, n) { 
+  let params;
   try {
-    const ss = SpreadsheetApp.openById(sId);
-    const sheet = ss.getSheetByName(n);
-    if (!sheet) return [["エラー: シート '" + n + "' がありません"]];
-    return sheet.getDataRange().getValues(); 
-  } catch (e) {
-    // IDが間違っている場合や権限がない場合、ここでエラーをキャッチして返します
-    return [["エラー: スプレッドシートが開けません", e.toString()]];
+    params = JSON.parse(e.postData.contents);
+  } catch (err) {
+    return ContentService.createTextOutput("JSON_ERROR");
   }
-}
-function addM(sId, row) { 
-  SpreadsheetApp.openById(sId).getSheetByName("道具名簿").appendRow(row); 
-  return { success: true, message: "登録完了" }; // オブジェクトで返す
-}
 
-function addS(sId, dept, name, comp) {
-  SpreadsheetApp.openById(sId).getSheetByName("社員名簿").appendRow([new Date(), dept, name, comp]);
-  return { success: true, message: "社員登録完了" }; // オブジェクトで返す
-}
+  const action = params.action;
+  const sId = params.sId; 
 
-// 削除用関数（共通）
-function deleteRow(sId, sheetName, key) {
-  const sheet = SpreadsheetApp.openById(sId).getSheetByName(sheetName);
-  const data = sheet.getDataRange().getValues();
-  for (let i = data.length - 1; i >= 0; i--) {
-    if (data[i][0] == key) { // 1列目が一致したら削除
-      sheet.deleteRow(i + 1);
-      return { success: true, message: "削除しました" };
+  try {
+    // --- 1. ログイン & フォルダID自動抽出 ---
+    if (action === "login") {
+      const ss = SpreadsheetApp.openById(MASTER_SHEET_ID);
+      const data = ss.getSheets()[0].getDataRange().getValues();
+      for (let i = 1; i < data.length; i++) {
+        if (data[i][0].toString().trim() === params.id.trim() && 
+            data[i][1].toString().trim() === params.pw.trim()) {
+          
+          let rawFolder = data[i][5] || ""; 
+          let folderId = rawFolder;
+          if (rawFolder.includes("folders/")) {
+            folderId = rawFolder.split("folders/")[1].split("?")[0].split("/")[0];
+          }
+
+          return ContentService.createTextOutput(JSON.stringify({
+            success: true, sId: data[i][2], compName: data[i][4] || "Guest", cCode: data[i][0], folderId: folderId 
+          })).setMimeType(ContentService.MimeType.JSON);
+        }
+      }
+      return ContentService.createTextOutput(JSON.stringify({success: false}));
     }
-  }
-  return { success: false, message: "見つかりませんでした" };
+
+    // --- 2. 道具の登録・上書き (A:名前, B:タグ, C:SS保持, D:画像URL, E:備考) ---
+    if (action === "addToolMaster") {
+      const ss = SpreadsheetApp.openById(sId);
+      const sheet = ss.getSheetByName("道具名簿");
+      const data = sheet.getDataRange().getValues();
+      const targetTag = params.tag.toString().trim().toUpperCase();
+      let imageUrl = "";
+
+      // 画像保存
+      if (params.imageBlob && params.folderId) {
+        const folder = DriveApp.getFolderById(params.folderId);
+        const blob = Utilities.newBlob(Utilities.base64Decode(params.imageBlob.split(",")[1]), "image/jpeg", "tool_" + targetTag + ".jpg");
+        const file = folder.createFile(blob);
+        file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+        imageUrl = "https://drive.google.com/uc?export=view&id=" + file.getId();
+      }
+
+      let rowIndex = -1;
+      for (let i = 1; i < data.length; i++) {
+        if (data[i][1] && data[i][1].toString().trim().toUpperCase() === targetTag) { rowIndex = i + 1; break; }
+      }
+
+      if (rowIndex > 0) {
+        sheet.getRange(rowIndex, 1).setValue(params.name);
+        if (imageUrl) sheet.getRange(rowIndex, 4).setValue(imageUrl);
+        sheet.getRange(rowIndex, 5).setValue(params.remarks);
+        return ContentService.createTextOutput("✅ 上書き完了しました！\n画像URL: " + (imageUrl || "変更なし"));
+      } else {
+        sheet.appendRow([params.name, params.tag, "", imageUrl, params.remarks]);
+        return ContentService.createTextOutput("✅ 新規登録完了しました！\n画像URL: " + (imageUrl || "なし"));
+      }
+    }
+
+    // --- 3. 取得系 ---
+    if (action === "fetchToolMaster") {
+      const data = SpreadsheetApp.openById(sId).getSheetByName("道具名簿").getDataRange().getValues();
+      return ContentService.createTextOutput(JSON.stringify(data.slice(1))).setMimeType(ContentService.MimeType.JSON);
+    }
+    if (action === "fetchData") {
+      const data = SpreadsheetApp.openById(sId).getSheets()[0].getDataRange().getValues();
+      return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(ContentService.MimeType.JSON);
+    }
+    if (action === "fetchStaff") {
+      const data = SpreadsheetApp.openById(sId).getSheetByName("社員名簿").getDataRange().getValues();
+      return ContentService.createTextOutput(JSON.stringify(data.slice(1))).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // --- 4. 更新・削除 ---
+    if (action === "update") {
+      const sheet = SpreadsheetApp.openById(sId).getSheets()[0];
+      const now = new Date();
+      params.tagIds.forEach(id => {
+        sheet.appendRow([params.status, "...", params.status, params.userName, params.status, id, now]);
+      });
+      return ContentService.createTextOutput("更新完了");
+    }
+    if (action === "deleteToolFull") {
+      const ss = SpreadsheetApp.openById(sId);
+      const tag = params.tagId.toString().trim().toUpperCase();
+      [ss.getSheetByName("道具名簿"), ss.getSheets()[0]].forEach(sh => {
+        if (!sh) return;
+        const d = sh.getDataRange().getValues();
+        for (let i = d.length - 1; i >= 1; i--) {
+          const check = sh.getName() === "道具名簿" ? d[i][1] : d[i][5];
+          if (check && check.toString().trim().toUpperCase() === tag) sh.deleteRow(i + 1);
+        }
+      });
+      return ContentService.createTextOutput("削除完了");
+    }
+  } catch (e) { return ContentService.createTextOutput("Error: " + e.message); }
 }
+
+function test(){ DriveApp.getRootFolder(); }
