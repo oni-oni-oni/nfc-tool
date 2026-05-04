@@ -1,11 +1,17 @@
 const MASTER_SHEET_ID = '1_z9SacqBnkhj-VeD5EQhJHiAj38l2H-M60j_ikgGYbA';
 function doGet(e) {
-  // index.html を読み込んでブラウザに表示する
-  return HtmlService.createTemplateFromFile('index').evaluate()
+  // index.htmlを読み込み、スプレッドシートの値を埋め込めるようにする
+  const template = HtmlService.createTemplateFromFile('index');
+  
+  // ログイン後に必要な変数を初期化（エラー防止）
+  template.sheetId = ""; 
+  template.companyCode = "未ログイン";
+  
+  return template.evaluate()
     .setTitle('道具管理システム')
-    .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL); // 外部連携しやすくする
 }
-
 function doPost(e) {
   let params;
   try {
