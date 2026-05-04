@@ -1,4 +1,10 @@
 const MASTER_SHEET_ID = '1_z9SacqBnkhj-VeD5EQhJHiAj38l2H-M60j_ikgGYbA';
+function doGet(e) {
+  // index.html を読み込んでブラウザに表示する
+  return HtmlService.createTemplateFromFile('index').evaluate()
+    .setTitle('道具管理システム')
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+}
 
 function doPost(e) {
   let params;
