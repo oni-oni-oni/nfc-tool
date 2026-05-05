@@ -88,7 +88,7 @@
 </div>
 
 <script>
-  // 修正： ?!= ではなく ?= を使い、明示的にグローバル変数へ
+  // <?!= を使わず、より確実な形式に変更
   var db = [];
   var sid = "<?= sheetId ?>"; 
   var cCode = "<?= companyCode ?>";
@@ -96,8 +96,8 @@
 
   window.onload = function() { 
     if (!sid) {
-       console.error("シートIDが空です。ログインからやり直してください。");
-       return;
+      alert("エラー：スプレッドシートIDが正しく渡されていません。ログインし直してください。");
+      return;
     }
     loadToolsData(); 
   };
