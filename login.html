@@ -35,20 +35,15 @@
     google.script.run
       .withSuccessHandler(function(res) {
         if(res && res.success) {
-          const baseUrl = window.location.href.split('?')[0];
+          // 💡 現在のURL（/exec）を取得し、iframeの外側を丸ごとリダイレクトさせる
+          var baseUrl = window.location.href.split('?')[0];
+          var next = baseUrl + "?cCode=" + encodeURIComponent(res.cCode) + "&sId=" + encodeURIComponent(res.sId);
           
-          // 💡 encodeURIComponent を使うことで、全角の会社名も安全にURLに含められます
-          const params = [
-            "cCode=" + encodeURIComponent(res.cCode),
-            "sId=" + encodeURIComponent(res.sId)
-          ].join("&");
-          
-          window.top.location.href = baseUrl + "?" + params;
-        } else {
-          msg.innerText = "IDまたはパスワードが違います";
-          btn.disabled = false;
+          // 💡 これが iframe の壁を突き破るための記述です
+          window.top.location.href = next; 
         }
-      })      .withFailureHandler(function(err) {
+      })
+        .withFailureHandler(function(err) {
         msg.innerText = "通信エラー: " + err.message;
         btn.disabled = false;
       })
