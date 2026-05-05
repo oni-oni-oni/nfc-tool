@@ -88,11 +88,15 @@
 </div>
 
 <script>
-  var db = [], sid = "<?!= sheetId ?>", cCode = "<?!= companyCode ?>";
+  var db = [];
+  var sid = "<?= sheetId ?>"; 
+  var cCode = "<?= companyCode ?>";
+
+
   var scannedList = [];
 
   window.onload = function() { 
-    // まずメインデータを読み込む。これが終わるまで他は動かさない
+    console.log("開始: sid=" + sid); // ログを出す
     loadToolsData(); 
   };
 
@@ -111,15 +115,19 @@ function switchView(v) {
 }
 
   function loadToolsData() {
-    google.script.run.withSuccessHandler(function(data) {
-      if(!data || data.length === 0) return;
-      db = data;
-      initF(data.slice(1));
-      draw();
-      document.getElementById('loading-tools').style.display = "none";
-    }).getFullData(sid);
+    google.script.run
+      .withSuccessHandler(function(data) {
+        console.log("データ受信成功", data);
+        db = data;
+        initF(data.slice(1));
+        draw();
+        document.getElementById('loading-tools').style.display = "none";
+      })
+      .withFailureHandler(function(err) {
+        alert("エラー発生: " + err.message); // エラーを画面に出す
+      })
+      .getFullData(sid);
   }
-
   function initF(rows) {
     var make = (id, col) => {
       var vals = [...new Set(rows.map(r => (r[col]||"").toString()))].filter(v => v).sort();
@@ -214,33 +222,6 @@ function switchView(v) {
     window.top.location.href = window.location.href.split('?')[0];
     }
   
-/**
- * ログイン照合関数（login.htmlから呼び出される）
- */
-function checkLogin(id, pw) {
-  try {
-    const ss = SpreadsheetApp.openById(MASTER_SHEET_ID);
-    // 「ユーザー管理」シートを探す、なければ1枚目
-    const sheet = ss.getSheetByName("ユーザー管理") || ss.getSheets()[0];[cite: 1]
-    const data = sheet.getDataRange().getValues();[cite: 1]
-    
-    for (let i = 1; i < data.length; i++) {
-      // ID(0列目)とPW(1列目)を照合
-      if (data[i][0].toString().trim() === id.toString().trim() && 
-          data[i][1].toString().trim() === pw.toString().trim()) {[cite: 1]
-        
-        return {
-          success: true,
-          cCode: data[i][0], // 会社コード
-          sId: data[i][2]    // スプレッドシートID
-        };
-      }
-    }
-    return { success: false };
-  } catch (e) {
-    return { success: false, error: e.toString() };
-  }
-}
 
 </script>
 </body>
