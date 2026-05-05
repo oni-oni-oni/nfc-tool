@@ -88,15 +88,17 @@
 </div>
 
 <script>
+  // 修正： ?!= ではなく ?= を使い、明示的にグローバル変数へ
   var db = [];
   var sid = "<?= sheetId ?>"; 
   var cCode = "<?= companyCode ?>";
-
-
   var scannedList = [];
 
   window.onload = function() { 
-    console.log("開始: sid=" + sid); // ログを出す
+    if (!sid) {
+       console.error("シートIDが空です。ログインからやり直してください。");
+       return;
+    }
     loadToolsData(); 
   };
 
