@@ -127,7 +127,13 @@ function switchView(v) {
         document.getElementById('loading-tools').style.display = "none";
       })
       .withFailureHandler(function(err) {
-        alert("エラー発生: " + err.message); // エラーを画面に出す
+        // 💡 通信エラーの内容を画面に大きく表示する
+        document.body.innerHTML = 
+          "<div class='container mt-5 text-danger'>" +
+          "<h3>データの取得に失敗しました</h3>" +
+          "<p>詳細: " + err.message + "</p>" +
+          "<p>スプレッドシートの権限やIDが正しいか確認してください。</p>" +
+          "</div>";
       })
       .getFullData(sid);
   }
