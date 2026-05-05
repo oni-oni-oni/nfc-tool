@@ -32,57 +32,24 @@
     btn.disabled = true;
     msg.innerText = "認証中...";
 
-    const url = scriptUrl();
-
-    // GASのdoPostにデータを送る
-    // fetchのbodyにJSONを入れる場合、GAS側でJSON.parse(e.postData.contents)が必要
-    fetch(url, {
-      method: "POST",
-      mode: "no-cors", // CORSエラー回避用（ただしレスポンスは不透明になる）
-      body: JSON.stringify({ action: "login", id: id, pw: pw })
-    })
-    .then(() => {
-      // no-corsモードではレスポンス内容を読み取れないため、
-      // 成功を信じて直接google.script.runで再試行するか、
-      // 以下の標準的な fetch 形式で再度試みます。
-      standardFetch(url, id, pw);
-    })
-    .catch(err => {
-      msg.innerText = "通信エラーが発生しました";
-      btn.disabled = false;
-    });
-  }
-
-  // レスポンスを受け取るための通信関数
-  function standardFetch(url, id, pw) {
-    const btn = document.getElementById('loginBtn');
-    const msg = document.getElementById('msg');
-
-    fetch(url, {
-      method: "POST",
-      body: JSON.stringify({ action: "login", id: id, pw: pw })
-    })
-    .then(res => res.text()) // JSONの前にテキストとして受け取ってチェック
-    .then(text => {
-      try {
-        const res = JSON.parse(text);
-        if(res.success) {
-          const next = url + "?cCode=" + encodeURIComponent(res.cCode) + "&sId=" + encodeURIComponent(res.sId);
+    // fetchではなく、GAS専用の関数呼び出しを使う
+    google.script.run
+      .withSuccessHandler(function(res) {
+        if(res && res.success) {
+          // 成功時：現在のURLにパラメータを付与してリダイレクト
+          const baseUrl = window.location.href.split('?')[0];
+          const next = baseUrl + "?cCode=" + encodeURIComponent(res.cCode) + "&sId=" + encodeURIComponent(res.sId);
           window.top.location.href = next;
         } else {
           msg.innerText = "IDまたはパスワードが違います";
           btn.disabled = false;
         }
-      } catch(e) {
-        console.error("JSON解析エラー:", text);
-        msg.innerText = "サーバーから不正な応答がありました。デプロイ設定を確認してください。";
+      })
+      .withFailureHandler(function(err) {
+        msg.innerText = "システムエラーが発生しました: " + err;
         btn.disabled = false;
-      }
-    });
-  }
-
-  function scriptUrl() {
-    return window.location.href.split('?')[0];
+      })
+      .checkLogin(id, pw); // code.gsに作成する関数
   }
 </script>
 </body>

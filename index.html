@@ -214,7 +214,33 @@ function switchView(v) {
     window.top.location.href = window.location.href.split('?')[0];
     }
   
-
+/**
+ * ログイン照合関数（login.htmlから呼び出される）
+ */
+function checkLogin(id, pw) {
+  try {
+    const ss = SpreadsheetApp.openById(MASTER_SHEET_ID);
+    // 「ユーザー管理」シートを探す、なければ1枚目
+    const sheet = ss.getSheetByName("ユーザー管理") || ss.getSheets()[0];[cite: 1]
+    const data = sheet.getDataRange().getValues();[cite: 1]
+    
+    for (let i = 1; i < data.length; i++) {
+      // ID(0列目)とPW(1列目)を照合
+      if (data[i][0].toString().trim() === id.toString().trim() && 
+          data[i][1].toString().trim() === pw.toString().trim()) {[cite: 1]
+        
+        return {
+          success: true,
+          cCode: data[i][0], // 会社コード
+          sId: data[i][2]    // スプレッドシートID
+        };
+      }
+    }
+    return { success: false };
+  } catch (e) {
+    return { success: false, error: e.toString() };
+  }
+}
 
 </script>
 </body>
