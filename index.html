@@ -88,20 +88,20 @@
 </div>
 
 <script>
-// 💡 code.gs の template.sheetId などから値を受け取る
-  var db = [];
-  // 💡 文字化け対策として <?!= ... ?>（エスケープなし）を使用します
+  // 💡 安全な値の受け取り
   var sid = "<?!= sheetId ?>"; 
   var cCode = "<?!= companyCode ?>";
+  var db = [];
+  var scannedList = [];
 
   window.onload = function() { 
-    if (!sid || sid === "undefined") {
-      alert("エラー：スプレッドシートIDが見つかりません。");
+    // 💡 文字列としての "undefined" をチェック
+    if (!sid || sid === "" || sid === "undefined") {
+      document.body.innerHTML = "<div class='container mt-5'><h3>⚠️ セッションエラー</h3><p>ログイン画面からやり直してください。</p></div>";
       return;
     }
     loadToolsData(); 
   };
-
 // switchViewを元のシンプルな形に戻す（リロード処理を削除！）
 function switchView(v) {
   const views = ['tools', 'master', 'staff', 'scan'];
