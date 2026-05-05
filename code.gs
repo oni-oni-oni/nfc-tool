@@ -1,73 +1,125 @@
-const MASTER_SHEET_ID = '1_z9SacqBnkhj-VeD5EQhJHiAj38l2H-M60j_ikgGYbA';
+// スプレッドシートのオブジェクトを取得
+const SS_ID = "1_z9SacqBnkhj-VeD5EQhJHiAj38l2H-M60j_ikgGYbA";
+const SS = SpreadsheetApp.openById(SS_ID);
 
-function doGet(e) {
-  try {
-    const page = e.parameter.cCode ? 'index' : 'login';
-    const template = HtmlService.createTemplateFromFile(page);
-    
-    template.companyCode = e.parameter.cCode || "";
-    template.sheetId = e.parameter.sId || "";
-    
-    return template.evaluate()
-      .setTitle('道具管理システム')
-      .addMetaTag('viewport', 'width=device-width, initial-scale=1')
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-      
-  } catch (err) {
-    return HtmlService.createHtmlOutput("<h3>サーバーエラー</h3><p>" + err.toString() + "</p>");
-  }
+/**
+ * ウェブアプリにアクセスした際にHTMLを表示する
+ */
+function doGet() {
+  // HTMLファイル名が「index」とのことですので、ここを 'index' に設定します
+  return HtmlService.createTemplateFromFile('index') 
+    .evaluate()
+    .setTitle('道具管理システム')
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
 
-function checkLogin(id, pw) {
+/**
+ * フロントエンド（HTML）からのPOSTリクエストを受け取る
+ */
+function doPost(e) {
+  const json = JSON.parse(e.postData.contents);
+  const action = json.action;
+  let result = {};
+
   try {
-    const ss = SpreadsheetApp.openById(MASTER_SHEET_ID);
-    const sheet = ss.getSheetByName("ユーザー管理") || ss.getSheets()[0];
-    const data = sheet.getDataRange().getValues();
-    
-    for (let i = 1; i < data.length; i++) {
-      if (data[i][0].toString().trim() === id.toString().trim() && 
-          data[i][1].toString().trim() === pw.toString().trim()) {
-        return { 
-          success: true, 
-          cCode: data[i][4] ? data[i][4].toString() : "No Name", 
-          sId: data[i][2] 
-        };
-      }
+    switch (action) {
+      case "login":
+        result = handleLogin(json.id, json.pw);
+        break;
+      case "addToolMaster":
+        result = addToolMaster(json.name, json.tag, json.sId);
+        break;
+      case "fetchToolMaster":
+        result = fetchToolMaster(json.sId);
+        break;
+      case "deleteTool":
+        result = deleteTool(json.name, json.sId);
+        break;
+      case "fetchData": // 稼働状況一覧
+        result = fetchData(json.sId);
+        break;
+      case "fetchStaff": // 社員名簿取得
+        result = fetchStaff(json.sId);
+        break;
+      default:
+        result = { success: false, message: "Invalid Action" };
     }
-    return { success: false };
-  } catch (e) {
-    return { success: false, error: e.toString() };
+  } catch (err) {
+    result = { success: false, message: "Error: " + err.toString() };
   }
+
+  return ContentService.createTextOutput(JSON.stringify(result))
+    .setMimeType(ContentService.MimeType.JSON);
 }
 
-// 共通データ取得関数
-function getFullData(sId) { return SpreadsheetApp.openById(sId).getSheets()[0].getDataRange().getValues(); }
-function getToolMasterList(sId) { return SpreadsheetApp.openById(sId).getSheetByName("道具名簿").getDataRange().getValues().slice(1); }
-function getStaffData(sId) { return SpreadsheetApp.openById(sId).getSheetByName("社員名簿").getDataRange().getValues().slice(1); }
-
-// index.htmlから呼ばれる登録・更新関数
-function bulkUpdateByTagIds(sId, tagIds, userName, place, status) {
-  const sheet = SpreadsheetApp.openById(sId).getSheets()[0];
-  const now = new Date();
-  tagIds.forEach(id => { sheet.appendRow([status, "", place, userName, status, id, now]); });
-  return "✅ 更新完了";
+/**
+ * ログイン処理
+ */
+function handleLogin(id, pw) {
+  const sheet = SS.getSheetByName("Users");
+  const data = sheet.getDataRange().getValues();
+  
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] == id && data[i][1] == pw) {
+      return {
+        success: true,
+        companyCode: data[i][2], // HTMLの displayCompany に表示されます
+        sId: Utilities.base64Encode(id + ":" + new Date().getTime())
+      };
+    }
+  }
+  return { success: false, message: "IDまたはパスワードが正しくありません" };
 }
 
+/**
+ * 道具マスターへの追加
+ */
 function addToolMaster(name, tag, sId) {
-  SpreadsheetApp.openById(sId).getSheetByName("道具名簿").appendRow([name, tag]);
-  return "✅ 登録完了";
+  if (!sId) return { success: false, message: "Session Expired" };
+  const sheet = SS.getSheetByName("ToolMaster");
+  sheet.appendRow([name, tag, new Date()]);
+  return { success: true, message: "「" + name + "」を登録しました" };
 }
 
-function addMyStaff(dept, name, sId) {
-  SpreadsheetApp.openById(sId).getSheetByName("社員名簿").appendRow(["", dept, name]);
-  return "✅ 登録完了";
+/**
+ * 道具マスターの取得
+ */
+function fetchToolMaster(sId) {
+  if (!sId) return [];
+  const sheet = SS.getSheetByName("ToolMaster");
+  const data = sheet.getDataRange().getValues();
+  return data.slice(1);
 }
 
-function deleteMyStaff(name, sId) {
-  const sheet = SpreadsheetApp.openById(sId).getSheetByName("社員名簿");
+/**
+ * 道具マスターからの削除
+ */
+function deleteTool(name, sId) {
+  if (!sId) return { success: false };
+  const sheet = SS.getSheetByName("ToolMaster");
   const data = sheet.getDataRange().getValues();
   for (let i = data.length - 1; i >= 1; i--) {
-    if (data[i][2] === name) { sheet.deleteRow(i + 1); break; }
+    if (data[i][0] == name) {
+      sheet.deleteRow(i + 1);
+    }
   }
-  return "削除しました";
+  return { success: true };
+}
+
+/**
+ * 稼働状況（メインデータ）の取得
+ */
+function fetchData(sId) {
+  if (!sId) return [];
+  const sheet = SS.getSheetByName("MainLog");
+  return sheet.getDataRange().getValues();
+}
+
+/**
+ * 社員名簿の取得
+ */
+function fetchStaff(sId) {
+  if (!sId) return [];
+  const sheet = SS.getSheetByName("StaffMaster");
+  return sheet.getDataRange().getValues();
 }
