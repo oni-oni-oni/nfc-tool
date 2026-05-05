@@ -88,15 +88,15 @@
 </div>
 
 <script>
-  // <?!= を使わず、より確実な形式に変更
   var db = [];
+  // ?!= ではなく ?= を使用します
   var sid = "<?= sheetId ?>"; 
   var cCode = "<?= companyCode ?>";
   var scannedList = [];
 
   window.onload = function() { 
-    if (!sid) {
-      alert("エラー：スプレッドシートIDが正しく渡されていません。ログインし直してください。");
+    if (!sid || sid === "undefined") {
+      document.body.innerHTML = "<h4>エラー: シートIDが見つかりません。ログインし直してください。</h4>";
       return;
     }
     loadToolsData(); 
