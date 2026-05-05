@@ -89,14 +89,15 @@
 
 <script>
   var db = [];
-  // ?!= ではなく ?= を使用します
+  // <?!= ではなく <?= を使い、確実に文字列として取得します
   var sid = "<?= sheetId ?>"; 
   var cCode = "<?= companyCode ?>";
   var scannedList = [];
 
   window.onload = function() { 
-    if (!sid || sid === "undefined") {
-      document.body.innerHTML = "<h4>エラー: シートIDが見つかりません。ログインし直してください。</h4>";
+    // IDが渡されていない場合に、ブラウザ上でエラーを表示するようにします
+    if (!sid || sid === "" || sid === "undefined") {
+      document.body.innerHTML = "<div class='container mt-5'><div class='alert alert-danger'><h4>エラー</h4>スプレッドシートIDが正しく渡されていません。再度ログインしてください。</div></div>";
       return;
     }
     loadToolsData(); 

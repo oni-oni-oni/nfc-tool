@@ -23,7 +23,12 @@ function checkLogin(id, pw) {
     for (let i = 1; i < data.length; i++) {
       if (data[i][0].toString().trim() === id.toString().trim() && 
           data[i][1].toString().trim() === pw.toString().trim()) {
-        return { success: true, cCode: data[i][0], sId: data[i][2] };
+        // ここを index.html が受け取るパラメータ名と完全に一致させる
+        return { 
+          success: true, 
+          cCode: data[i][3], // D列：会社名
+          sId: data[i][2]    // C列：シートID
+        };
       }
     }
     return { success: false };
