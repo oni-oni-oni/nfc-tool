@@ -90,14 +90,13 @@
 <script>
 // 💡 code.gs の template.sheetId などから値を受け取る
   var db = [];
-  var sid = "<?= sheetId ?>"; 
-  var cCode = "<?= companyCode ?>";
-  var scannedList = [];
+  // 💡 文字化け対策として <?!= ... ?>（エスケープなし）を使用します
+  var sid = "<?!= sheetId ?>"; 
+  var cCode = "<?!= companyCode ?>";
 
   window.onload = function() { 
-    // 💡 デバッグ用：もしIDが届いていなければ警告を出す
     if (!sid || sid === "undefined") {
-      alert("エラー：スプレッドシートIDが届いていません。ログインし直してください。");
+      alert("エラー：スプレッドシートIDが見つかりません。");
       return;
     }
     loadToolsData(); 
