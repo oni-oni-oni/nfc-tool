@@ -88,13 +88,16 @@
 </div>
 
 <script>
+// 💡 code.gs の template.sheetId などから値を受け取る
   var db = [];
   var sid = "<?= sheetId ?>"; 
   var cCode = "<?= companyCode ?>";
+  var scannedList = [];
 
   window.onload = function() { 
-    if (!sid) {
-      document.body.innerHTML = "<h2 style='color:orange;'>⚠️ シートIDが渡されていません。ログイン画面から入り直してください。</h2>";
+    // 💡 デバッグ用：もしIDが届いていなければ警告を出す
+    if (!sid || sid === "undefined") {
+      alert("エラー：スプレッドシートIDが届いていません。ログインし直してください。");
       return;
     }
     loadToolsData(); 

@@ -3,8 +3,8 @@ const MASTER_SHEET_ID = '1_z9SacqBnkhj-VeD5EQhJHiAj38l2H-M60j_ikgGYbA';
 // --- 画面表示用 ---
 function doGet(e) {
   try {
-    // ファイル名が 'index' であることを確認してください。もしファイル名が 'index_2' ならここも変える必要があります。
-    const page = e.parameter.cCode ? 'index' : 'login';
+    // 💡 重要：ファイル名が「index_2」ならここを 'index_2' に書き換えてください
+    const page = e.parameter.cCode ? 'index' : 'login'; 
     const template = HtmlService.createTemplateFromFile(page);
     
     template.sheetId = e.parameter.sId || ""; 
@@ -12,17 +12,14 @@ function doGet(e) {
     
     return template.evaluate()
       .setTitle('道具管理システム')
-      .addMetaTag('viewport', 'width=device-width, initial-scale=1')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
       
   } catch (err) {
-    // ここがデバッグコードです。画面にエラーを強制表示します。
+    // 💡 これがデバッグコードです。画面にエラーを表示させます。
     return HtmlService.createHtmlOutput(
-      "<html><body><div style='color:red; padding:20px; border:2px solid red;'>" +
-      "<h3>🚨 GAS実行エラーが発生しました</h3>" +
-      "<p><b>エラーメッセージ:</b> " + err.message + "</p>" +
-      "<p><b>スタックトレース:</b> " + err.stack + "</p>" +
-      "</div></body></html>"
+      "<body style='padding:20px; color:red;'><h3>🚨 GAS実行エラー</h3>" +
+      "<p><b>エラー:</b> " + err.message + "</p>" +
+      "<p><b>スタック:</b> " + err.stack + "</p></body>"
     );
   }
 }
