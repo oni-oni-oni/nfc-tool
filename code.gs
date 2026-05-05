@@ -2,15 +2,37 @@ const MASTER_SHEET_ID = '1_z9SacqBnkhj-VeD5EQhJHiAj38l2H-M60j_ikgGYbA';
 
 // --- 画面表示用 ---
 function doGet(e) {
-  const page = e.parameter.cCode ? 'index' : 'login';
-  const template = HtmlService.createTemplateFromFile(page);
-  template.sheetId = e.parameter.sId || ""; 
-  template.companyCode = e.parameter.cCode || "";
-  
-  return template.evaluate()
-    .setTitle('道具管理システム')
-    .addMetaTag('viewport', 'width=device-width, initial-scale=1')
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  try {
+    // ファイル名が 'index' であることを確認してください。もしファイル名が 'index_2' ならここも変える必要があります。
+    const page = e.parameter.cCode ? 'index' : 'login';
+    const template = HtmlService.createTemplateFromFile(page);
+    
+    template.sheetId = e.parameter.sId || ""; 
+    template.companyCode = e.parameter.cCode || "";
+    
+    return template.evaluate()
+      .setTitle('道具管理システム')
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+      
+  } catch (err) {
+    // ここがデバッグコードです。画面にエラーを強制表示します。
+    return HtmlService.createHtmlOutput(
+      "<html><body><div style='color:red; padding:20px; border:2px solid red;'>" +
+      "<h3>🚨 GAS実行エラーが発生しました</h3>" +
+      "<p><b>エラーメッセージ:</b> " + err.message + "</p>" +
+      "<p><b>スタックトレース:</b> " + err.stack + "</p>" +
+      "</div></body></html>"
+    );
+  }
+}
+
+// 権限確認用（GASエディタの「実行」ボタンでこれを選択して動かしてください）
+function debug_test_access() {
+  const ss = SpreadsheetApp.openById(MASTER_SHEET_ID);
+  console.log("マスターシート名: " + ss.getName());
+  const data = ss.getSheets()[0].getDataRange().getValues();
+  console.log("データ取得成功: " + data.length + "行");
 }
 
 // --- ログイン照合関数 ---

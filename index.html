@@ -89,15 +89,12 @@
 
 <script>
   var db = [];
-  // <?!= ではなく <?= を使い、確実に文字列として取得します
   var sid = "<?= sheetId ?>"; 
   var cCode = "<?= companyCode ?>";
-  var scannedList = [];
 
   window.onload = function() { 
-    // IDが渡されていない場合に、ブラウザ上でエラーを表示するようにします
-    if (!sid || sid === "" || sid === "undefined") {
-      document.body.innerHTML = "<div class='container mt-5'><div class='alert alert-danger'><h4>エラー</h4>スプレッドシートIDが正しく渡されていません。再度ログインしてください。</div></div>";
+    if (!sid) {
+      document.body.innerHTML = "<h2 style='color:orange;'>⚠️ シートIDが渡されていません。ログイン画面から入り直してください。</h2>";
       return;
     }
     loadToolsData(); 
@@ -120,20 +117,15 @@ function switchView(v) {
   function loadToolsData() {
     google.script.run
       .withSuccessHandler(function(data) {
-        console.log("データ受信成功", data);
         db = data;
         initF(data.slice(1));
         draw();
         document.getElementById('loading-tools').style.display = "none";
       })
       .withFailureHandler(function(err) {
-        // 💡 通信エラーの内容を画面に大きく表示する
-        document.body.innerHTML = 
-          "<div class='container mt-5 text-danger'>" +
-          "<h3>データの取得に失敗しました</h3>" +
-          "<p>詳細: " + err.message + "</p>" +
-          "<p>スプレッドシートの権限やIDが正しいか確認してください。</p>" +
-          "</div>";
+        // 💡 通信エラーをブラウザ画面に表示
+        alert("致命的なエラー: " + err.message);
+        document.getElementById('loading-tools').innerHTML = "データ取得失敗: " + err.message;
       })
       .getFullData(sid);
   }
