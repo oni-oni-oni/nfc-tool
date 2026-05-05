@@ -3,24 +3,22 @@ const MASTER_SHEET_ID = '1_z9SacqBnkhj-VeD5EQhJHiAj38l2H-M60j_ikgGYbA';
 // --- 画面表示用 ---
 function doGet(e) {
   try {
-    // 💡 重要：ファイル名が「index_2」ならここを 'index_2' に書き換えてください
-    const page = e.parameter.cCode ? 'index' : 'login'; 
+    // パラメータがある場合は index、ない場合は login を表示
+    const page = e.parameter.cCode ? 'index' : 'login';
     const template = HtmlService.createTemplateFromFile(page);
     
-    template.sheetId = e.parameter.sId || ""; 
+    // 💡 重要：URLの ?cCode= と ?sId= から値を取り出してテンプレートに渡す
     template.companyCode = e.parameter.cCode || "";
+    template.sheetId = e.parameter.sId || "";
     
     return template.evaluate()
       .setTitle('道具管理システム')
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
       
   } catch (err) {
-    // 💡 これがデバッグコードです。画面にエラーを表示させます。
-    return HtmlService.createHtmlOutput(
-      "<body style='padding:20px; color:red;'><h3>🚨 GAS実行エラー</h3>" +
-      "<p><b>エラー:</b> " + err.message + "</p>" +
-      "<p><b>スタック:</b> " + err.stack + "</p></body>"
-    );
+    // エラーが出た場合に真っ白にならないよう、エラー内容を表示
+    return HtmlService.createHtmlOutput("ページ読み込みエラー: " + err.toString());
   }
 }
 
@@ -43,11 +41,11 @@ function checkLogin(id, pw) {
       if (data[i][0].toString().trim() === id.toString().trim() && 
           data[i][1].toString().trim() === pw.toString().trim()) {
         
-        // C列(ID)は [2]、D列(会社名)は [3] です
         return { 
           success: true, 
-          cCode: data[i][3], // ここが index.html の <?!= companyCode ?> に入ります
-          sId: data[i][2]    // ここが index.html の <?!= sheetId ?> に入ります
+          // 💡 修正：E列（会社名）を[4]として取得します
+          cCode: data[i][4] ? data[i][4].toString() : "No Name", 
+          sId: data[i][2]    // C列（シートID）は[2]
         };
       }
     }
