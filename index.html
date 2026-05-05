@@ -88,14 +88,13 @@
 </div>
 
 <script>
-  // 💡 安全な値の受け取り
   var sid = "<?!= sheetId ?>"; 
   var cCode = "<?!= companyCode ?>";
   var db = [];
   var scannedList = [];
 
   window.onload = function() { 
-    // 💡 文字列としての "undefined" をチェック
+    // 文字列としての "undefined" をチェック
     if (!sid || sid === "" || sid === "undefined") {
       document.body.innerHTML = "<div class='container mt-5'><h3>⚠️ セッションエラー</h3><p>ログイン画面からやり直してください。</p></div>";
       return;
