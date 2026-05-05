@@ -15,7 +15,7 @@ function doPost(e) {
     // --- 1. ログイン & フォルダID自動抽出 ---
     if (action === "login") {
       const ss = SpreadsheetApp.openById(MASTER_SHEET_ID);
-      const data = ss.getSheets()[0].getDataRange().getValues();
+      const data = ss.getSheetByName("ユーザー管理").getDataRange().getValues();
       for (let i = 1; i < data.length; i++) {
         if (data[i][0].toString().trim() === params.id.trim() && 
             data[i][1].toString().trim() === params.pw.trim()) {
@@ -155,4 +155,19 @@ function addToolMaster(name, tag, sId) {
   const sheet = SpreadsheetApp.openById(sId).getSheetByName("道具名簿");
   sheet.appendRow([name, tag, "", "", ""]);
   return "✅ 登録完了";
+}
+
+function doGet(e) {
+  // パラメータに cCode (会社コード) があれば管理画面、なければログイン画面を表示
+  const page = e.parameter.cCode ? 'index' : 'login';
+  const template = HtmlService.createTemplateFromFile(page);
+  
+  // テンプレート変数に値をセット（index.htmlで使用）
+  template.sheetId = e.parameter.sId || ""; 
+  template.companyCode = e.parameter.cCode || "";
+  
+  return template.evaluate()
+    .setTitle('道具管理システム')
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }

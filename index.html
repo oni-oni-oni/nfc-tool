@@ -210,9 +210,12 @@ function switchView(v) {
 
   function resetF() { ['fItem','fPlace','fUser','fStatus'].forEach(id => { if(document.getElementById(id)) document.getElementById(id).value = ""; }); draw(); }
     function logout() {
-    // 単純に今のページをリロードしてログイン画面に戻す
-    window.location.reload();
+    // パラメータを消して、純粋なGASのURLへ飛ばす（＝ログイン画面に戻る）
+    window.top.location.href = window.location.href.split('?')[0];
     }
+  
+
+
 </script>
 </body>
 </html>

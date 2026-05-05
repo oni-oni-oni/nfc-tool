@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background-image: linear-gradient(120deg, #fdfbfb 0%, #ebedee 100%); height: 100vh; display: flex; align-items: center; justify-content: center; margin:0; }
+    .login-card { width: 100%; max-width: 400px; padding: 30px; border-radius: 15px; background: white; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+  </style>
+</head>
+<body>
+<div class="login-card text-center">
+  <h3 class="mb-4 text-primary">道具管理ログイン</h3>
+  <input type="text" id="userId" class="form-control mb-3" placeholder="ユーザーID">
+  <input type="password" id="userPw" class="form-control mb-4" placeholder="パスワード">
+  <button class="btn btn-primary w-100 btn-lg" id="loginBtn" onclick="login()">ログイン</button>
+  <div id="msg" class="text-danger mt-3 small"></div>
+</div>
+
+<script>
+  function login() {
+    const id = document.getElementById('userId').value;
+    const pw = document.getElementById('userPw').value;
+    const btn = document.getElementById('loginBtn');
+    const msg = document.getElementById('msg');
+    
+    if(!id || !pw) {
+      msg.innerText = "IDとパスワードを入力してください";
+      return;
+    }
+
+    btn.disabled = true;
+    msg.innerText = "認証中...";
+
+    const url = scriptUrl();
+
+    // GASのdoPostにデータを送る
+    // fetchのbodyにJSONを入れる場合、GAS側でJSON.parse(e.postData.contents)が必要
+    fetch(url, {
+      method: "POST",
+      mode: "no-cors", // CORSエラー回避用（ただしレスポンスは不透明になる）
+      body: JSON.stringify({ action: "login", id: id, pw: pw })
+    })
+    .then(() => {
+      // no-corsモードではレスポンス内容を読み取れないため、
+      // 成功を信じて直接google.script.runで再試行するか、
+      // 以下の標準的な fetch 形式で再度試みます。
+      standardFetch(url, id, pw);
+    })
+    .catch(err => {
+      msg.innerText = "通信エラーが発生しました";
+      btn.disabled = false;
+    });
+  }
+
+  // レスポンスを受け取るための通信関数
+  function standardFetch(url, id, pw) {
+    const btn = document.getElementById('loginBtn');
+    const msg = document.getElementById('msg');
+
+    fetch(url, {
+      method: "POST",
+      body: JSON.stringify({ action: "login", id: id, pw: pw })
+    })
+    .then(res => res.text()) // JSONの前にテキストとして受け取ってチェック
+    .then(text => {
+      try {
+        const res = JSON.parse(text);
+        if(res.success) {
+          const next = url + "?cCode=" + encodeURIComponent(res.cCode) + "&sId=" + encodeURIComponent(res.sId);
+          window.top.location.href = next;
+        } else {
+          msg.innerText = "IDまたはパスワードが違います";
+          btn.disabled = false;
+        }
+      } catch(e) {
+        console.error("JSON解析エラー:", text);
+        msg.innerText = "サーバーから不正な応答がありました。デプロイ設定を確認してください。";
+        btn.disabled = false;
+      }
+    });
+  }
+
+  function scriptUrl() {
+    return window.location.href.split('?')[0];
+  }
+</script>
+</body>
+</html>
