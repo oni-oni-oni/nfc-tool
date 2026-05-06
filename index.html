@@ -1,255 +1,145 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>道具管理アプリ</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-  <style>
-    :root { --primary-green: #198754; --bg-gray: #f8f9fa; }
-    body { background-color: var(--bg-gray); font-family: sans-serif; margin: 0; padding: 0; }
-    
-    /* 画面切り替えの制御 */
-    .view-section { display: none !important; }
-    .view-section.active { display: block !important; }
-
-    .container-mobile { max-width: 500px; margin: auto; padding: 20px 15px 100px 15px; }
-    
-    /* ログイン画面 */
-    .login-container { height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
-    .login-card { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); width: 100%; }
-
-    /* メインUIのカード */
-    .app-card { background: white; border-radius: 20px; padding: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 25px; }
-    .form-label { font-weight: bold; color: #333; margin-bottom: 8px; }
-    .form-control-lg { border-radius: 12px; border: 1px solid #dee2e6; background-color: #fdfdfd; }
-
-    /* ボタン類 */
-    .btn-register { background-color: var(--primary-green); color: white; padding: 16px; border-radius: 15px; font-weight: bold; font-size: 1.3rem; width: 100%; border: none; margin-top: 10px; }
-    .btn-scan { background-color: #6c757d; color: white; border-radius: 0 12px 12px 0; font-weight: bold; border: none; }
-    .scan-input { border-radius: 12px 0 0 12px !important; }
-
-    /* 下部ナビゲーション */
-    .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; display: none; justify-content: space-around; padding: 12px 0; border-top: 1px solid #eee; z-index: 2000; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); }
-    .nav-item { text-align: center; color: #999; text-decoration: none; font-size: 0.7rem; flex: 1; border: none; background: none; outline: none; }
-    .nav-item i { display: block; font-size: 1.6rem; margin-bottom: 3px; }
-    .nav-item.active { color: #0d6efd; font-weight: bold; }
-
-    /* 一覧の見た目 */
-    .table-title { font-weight: bold; color: #888; margin-bottom: 12px; font-size: 1.1rem; }
-    .table-container { background: white; border-radius: 15px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.03); }
-    .btn-del { color: #dc3545; border: 1px solid #ffc1c1; background: white; border-radius: 6px; padding: 2px 8px; font-size: 0.8rem; }
-  </style>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>道具管理システム</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; padding-bottom: 80px; }
+        .card-custom { border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); padding: 20px; margin-top: 15px; }
+        .nav-fixed { position: fixed; bottom: 0; width: 100%; background: white; border-top: 1px solid #ddd; display: flex; justify-content: space-around; padding: 12px 0; z-index: 1000; }
+        .view-section { display: none; }
+        .active-view { display: block; }
+        img.thumb { width: 50px; height: 50px; object-fit: cover; border-radius: 5px; background: #eee; }
+    </style>
 </head>
 <body>
 
-  <!-- 1. ログイン画面 -->
-  <div id="view-login" class="view-section active">
-    <div class="login-container">
-      <div class="login-card text-center">
-        <h3 class="fw-bold mb-4">🔑 システムログイン</h3>
-        <input type="text" id="userId" class="form-control form-control-lg mb-3" placeholder="ユーザーID">
-        <input type="password" id="userPw" class="form-control form-control-lg mb-4" placeholder="パスワード">
-        <button class="btn btn-primary w-100 p-3 fw-bold shadow-sm" style="border-radius:15px;" onclick="handleLogin()">ログイン</button>
-        <p id="loginMsg" class="text-danger mt-3 small"></p>
-      </div>
+<div class="container" id="app">
+    <div id="view-login" class="view-section active-view mt-5 text-center">
+        <div class="card card-custom border-0">
+            <h3 class="fw-bold mb-4">🔑 Login</h3>
+            <input type="text" id="userId" class="form-control mb-3" placeholder="ユーザーID">
+            <input type="password" id="userPw" class="form-control mb-4" placeholder="パスワード">
+            <button class="btn btn-primary w-100 py-3" onclick="handleLogin()">ログイン</button>
+            <p id="loginMsg" class="text-danger mt-3 small"></p>
+        </div>
     </div>
-  </div>
 
-  <!-- 2. メイン画面 -->
-  <div id="view-main" class="view-section">
-    <div class="container-mobile">
-      <div class="d-flex justify-content-between align-items-center mb-4">
-        <h5 class="fw-bold text-secondary mb-0" id="displayCompany"></h5>
-      </div>
-
-      <!-- A: 道具登録セクション（初期表示） -->
-      <div id="sec-register" class="sub-view" style="display: block;">
-        <div class="app-card">
-          <h4 class="fw-bold mb-4"><i class="bi bi-plus-lg me-2"></i>道具管理</h4>
-          <div class="mb-3">
-            <label class="form-label">道具名</label>
-            <input type="text" id="newToolName" class="form-control form-control-lg" placeholder="例：インパクトレンチ A">
-          </div>
-          <div class="mb-4">
-            <label class="form-label">タグID</label>
-            <div class="input-group">
-              <input type="text" id="tagIdDisplay" class="form-control form-control-lg scan-input" placeholder="スキャンしてください" readonly>
-              <button class="btn btn-scan px-4" onclick="startNFCScan()">スキャン</button>
+    <div id="view-register" class="view-section">
+        <div class="card card-custom border-0 mb-4">
+            <h5 class="fw-bold">➕ 道具の登録・編集</h5>
+            <div class="row g-2">
+                <div class="col-8"><input type="text" id="regName" class="form-control" placeholder="道具名"></div>
+                <div class="col-4"><button class="btn btn-secondary w-100" onclick="scanSingleTag()">スキャン</button></div>
             </div>
-          </div>
-          <button class="btn-register shadow" onclick="finalRegister()">名簿に登録</button>
+            <input type="text" id="regTag" class="form-control my-2 bg-light" readonly placeholder="タグID (スキャンしてください)">
+            <input type="text" id="regRemarks" class="form-control mb-2" placeholder="備考・メモ">
+            <input type="file" id="regImage" class="form-control mb-2" accept="image/*" capture="environment">
+            <button class="btn btn-success w-100" id="btnReg" onclick="registerTool()">名簿に保存</button>
         </div>
 
-        <div class="table-title">登録済み道具一覧</div>
-        <div class="table-container">
-          <table class="table mb-0">
-            <thead><tr class="small text-muted"><th>道具名</th><th>タグID</th><th class="text-end">操作</th></tr></thead>
-            <tbody id="masterTableBody" class="small"></tbody>
-          </table>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle bg-white rounded shadow-sm">
+                <thead class="table-light"><tr><th>写真</th><th>道具名</th><th>タグID</th><th>操作</th></tr></thead>
+                <tbody id="toolMasterTbd"></tbody>
+            </table>
         </div>
-      </div>
-
-      <!-- B: 稼働状況セクション -->
-      <div id="sec-list" class="sub-view" style="display: none;">
-        <div class="table-title">稼働状況一覧</div>
-        <div class="table-container">
-          <table class="table mb-0">
-            <thead class="table-dark"><tr><th>道具名</th><th>場所</th><th>状況</th></tr></thead>
-            <tbody id="tbd"></tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- C: 社員設定セクション -->
-      <div id="sec-staff" class="sub-view" style="display: none;">
-        <div class="app-card">
-          <h5 class="fw-bold mb-3">社員登録</h5>
-          <input type="text" id="deptName" class="form-control mb-2" placeholder="部署名">
-          <input type="text" id="staffName" class="form-control mb-3" placeholder="氏名">
-          <button class="btn btn-primary w-100 p-2" style="border-radius:10px;" onclick="registerStaff()">追加する</button>
-        </div>
-        <div class="table-container">
-          <table class="table mb-0"><tbody id="staffTbd"></tbody></table>
-        </div>
-      </div>
     </div>
-  </div>
 
-  <!-- ボトムナビゲーション -->
-  <nav class="bottom-nav" id="app-nav">
-    <button class="nav-item" onclick="switchTab('list', this)"><i class="bi bi-radar"></i>スキャン</button>
-    <button class="nav-item" onclick="switchTab('list', this)"><i class="bi bi-clipboard-data"></i>一覧</button>
-    <button class="nav-item" onclick="switchTab('staff', this)"><i class="bi bi-person-fill"></i>社員</button>
-    <button class="nav-item active" onclick="switchTab('register', this)"><i class="bi bi-plus-square-fill"></i>登録</button>
-    <button class="nav-item" onclick="location.reload()"><i class="bi bi-door-open-fill"></i>終了</button>
-  </nav>
+    <div id="view-scan" class="view-section">...</div>
+    <div id="view-list" class="view-section">...</div>
+</div>
+
+<nav class="nav-fixed" id="mainNav" style="display:none;">
+    <a href="#" onclick="switchView('scan')">📡</a>
+    <a href="#" onclick="switchView('list')">📋</a>
+    <a href="#" onclick="switchView('register')">➕</a>
+    <a href="#" onclick="location.reload()">🚪</a>
+</nav>
 
 <script>
-  const GAS_URL = "https://script.google.com/macros/s/AKfycbz_aAZvAV3kRKlCrhtczqHj4CbdtKUDykMqN5RxZfk2-CHQ392VYcl7yD9wvtlgykL7YA/exec";
-  let session = null;
+    const GAS_URL = "あなたのGASデプロイURL";
+    let session = { sId: "", folderId: "" };
+    let toolMap = {};
 
-  async function handleLogin() {
-    const id = document.getElementById('userId').value;
-    const pw = document.getElementById('userPw').value;
-    if(!id || !pw) return;
-    document.getElementById('loginMsg').innerText = "認証中...";
+    async function callGas(p) { return await fetch(GAS_URL, { method: "POST", body: JSON.stringify(p) }); }
 
-    try {
-      const res = await fetch(GAS_URL, { 
-        method: "POST", 
-        body: JSON.stringify({ action: "login", id: id, pw: pw }),
-        headers: { "Content-Type": "text/plain" }
-      });
-      const data = await res.json();
-      if (data.success) {
-        session = data;
-        document.getElementById('displayCompany').innerText = data.companyCode + " 様";
-        
-        // 画面の物理的な切り替え
-        document.getElementById('view-login').classList.remove('active');
-        document.getElementById('view-main').classList.add('active');
-        document.getElementById('app-nav').style.display = "flex";
-        
-        loadMasterData();
-      } else { 
-        document.getElementById('loginMsg').innerText = data.message; 
-      }
-    } catch (e) { 
-      document.getElementById('loginMsg').innerText = "接続エラー"; 
+    async function handleLogin() {
+        const id = document.getElementById('userId').value, pw = document.getElementById('userPw').value;
+        const res = await callGas({ action: "login", id, pw });
+        const data = await res.json();
+        if (data.success) {
+            session = data;
+            document.getElementById('mainNav').style.display = "flex";
+            switchView('register');
+        } else { alert("認証失敗"); }
     }
-  }
 
-  function switchTab(target, el) {
-    document.querySelectorAll('.sub-view').forEach(s => s.style.display = 'none');
-    document.getElementById('sec-' + target).style.display = 'block';
-    
-    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    el.classList.add('active');
+    function switchView(v) {
+        document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active-view'));
+        document.getElementById('view-' + v).classList.add('active-view');
+        if (v === 'register') loadToolMaster();
+    }
 
-    if(target === 'register') loadMasterData();
-    if(target === 'list') loadToolsData();
-    if(target === 'staff') loadStaffData();
-  }
+    async function registerTool() {
+        const btn = document.getElementById('btnReg');
+        btn.disabled = true; btn.innerText = "処理中...";
+        
+        const imgFile = document.getElementById('regImage').files[0];
+        let base64 = "";
+        if (imgFile) {
+            base64 = await new Promise(r => { const rd = new FileReader(); rd.onload = e => r(e.target.result); rd.readAsDataURL(imgFile); });
+        }
 
-  async function startNFCScan() {
-    try {
-      if (!('NDEFReader' in window)) return alert("NFC非対応ブラウザです");
-      const ndef = new NDEFReader();
-      await ndef.scan();
-      alert("タグをかざしてください");
-      ndef.onreading = event => {
-        document.getElementById('tagIdDisplay').value = event.serialNumber;
-      };
-    } catch (e) { alert("スキャン失敗: " + e); }
-  }
+        try {
+            const res = await callGas({
+                action: "addToolMaster", sId: session.sId, folderId: session.folderId,
+                name: document.getElementById('regName').value, tag: document.getElementById('regTag').value,
+                remarks: document.getElementById('regRemarks').value, imageBlob: base64
+            });
+            const msg = await res.text();
+            alert(msg); // ここに「上書き完了！ URL: ...」が表示される
+            
+            if(msg.includes("完了")) {
+                document.getElementById('regName').value = ""; document.getElementById('regTag').value = "";
+                document.getElementById('regRemarks').value = ""; document.getElementById('regImage').value = "";
+                btn.innerText = "名簿に保存"; btn.className = "btn btn-success w-100";
+                loadToolMaster();
+            }
+        } catch (e) { alert("エラーが発生しました"); }
+        btn.disabled = false;
+    }
 
-  async function finalRegister() {
-    const n = document.getElementById('newToolName').value;
-    const t = document.getElementById('tagIdDisplay').value;
-    if(!n || !t) return alert("道具名とタグIDが必要です");
-    
-    const res = await fetch(GAS_URL, { 
-      method: "POST", 
-      body: JSON.stringify({ action: "addToolMaster", name: n, tag: t, sId: session.sId }),
-      headers: { "Content-Type": "text/plain" }
-    });
-    const result = await res.json();
-    alert(result.message);
-    document.getElementById('newToolName').value = "";
-    document.getElementById('tagIdDisplay').value = "";
-    loadMasterData();
-  }
+    async function loadToolMaster() {
+        const res = await callGas({ action: "fetchToolMaster", sId: session.sId });
+        const tools = await res.json();
+        document.getElementById('toolMasterTbd').innerHTML = tools.map(t => `
+            <tr>
+                <td><img src="${t[3] || ''}" class="thumb"></td>
+                <td><b>${t[0]}</b></td>
+                <td><small class="text-muted">${t[1]}</small></td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary me-1" onclick="editTool('${t[1]}','${t[0]}','${t[4]}')">編集</button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteTool('${t[1]}')">削</button>
+                </td>
+            </tr>
+        `).join('');
+    }
 
-  async function loadMasterData() {
-    const res = await fetch(GAS_URL, { 
-      method: "POST", 
-      body: JSON.stringify({ action: "fetchToolMaster", sId: session.sId }),
-      headers: { "Content-Type": "text/plain" }
-    });
-    const d = await res.json();
-    document.getElementById('masterTableBody').innerHTML = (d||[]).map(r => `
-      <tr class="align-middle">
-        <td><strong>${r[0]}</strong></td>
-        <td class="text-muted" style="font-size:0.75rem;">${r[1]}</td>
-        <td class="text-end"><button class="btn-del" onclick="deleteTool('${r[0]}')">削除</button></td>
-      </tr>`).join('');
-  }
+    function editTool(tag, name, rem) {
+        document.getElementById('regTag').value = tag;
+        document.getElementById('regName').value = name;
+        document.getElementById('regRemarks').value = rem || "";
+        document.getElementById('btnReg').innerText = "上書き保存";
+        document.getElementById('btnReg').className = "btn btn-warning w-100";
+        window.scrollTo(0,0);
+    }
 
-  async function deleteTool(name) {
-    if(!confirm(name + " を削除しますか？")) return;
-    await fetch(GAS_URL, { 
-      method: "POST", 
-      body: JSON.stringify({ action: "deleteTool", name: name, sId: session.sId }),
-      headers: { "Content-Type": "text/plain" }
-    });
-    loadMasterData();
-  }
-
-  async function loadToolsData() {
-    const res = await fetch(GAS_URL, { 
-      method: "POST", 
-      body: JSON.stringify({ action: "fetchData", sId: session.sId }),
-      headers: { "Content-Type": "text/plain" }
-    });
-    const d = await res.json();
-    document.getElementById('tbd').innerHTML = d.slice(1).map(x => `
-      <tr><td>${x[1]}</td><td>${x[2]}</td><td><span class="badge bg-primary">${x[4]}</span></td></tr>
-    `).join('');
-  }
-
-  async function loadStaffData() {
-    const res = await fetch(GAS_URL, { 
-      method: "POST", 
-      body: JSON.stringify({ action: "fetchStaff", sId: session.sId }),
-      headers: { "Content-Type": "text/plain" }
-    });
-    const d = await res.json();
-    document.getElementById('staffTbd').innerHTML = (d||[]).map(r => `
-      <tr><td>${r[1]}</td><td>${r[2]}</td><td class="text-end"><button class="btn-del" onclick="delStaff('${r[2]}')">削除</button></td></tr>
-    `).join('');
-  }
+    async function scanSingleTag() {
+        const ndef = new NDEFReader(); await ndef.scan();
+        ndef.onreading = e => { document.getElementById('regTag').value = e.serialNumber; };
+    }
 </script>
 </body>
 </html>
