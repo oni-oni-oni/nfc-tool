@@ -51,13 +51,37 @@
     <div id="view-list" class="view-section">...</div>
 </div>
 
-<nav class="nav-fixed" id="mainNav" style="display:none;">
-    <a href="#" onclick="switchView('scan')">📡</a>
-    <a href="#" onclick="switchView('list')">📋</a>
-    <a href="#" onclick="switchView('register')">➕</a>
-    <a href="#" onclick="location.reload()">🚪</a>
-</nav>
+<style>
+    /* 文字を追加するためのスタイル調整 */
+    .nav-fixed a {
+        text-decoration: none;
+        color: #666;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        font-size: 10px; /* 文字サイズ */
+    }
+    .nav-icon { font-size: 24px; mb-1; } /* アイコンの大きさ */
+</style>
 
+<nav class="nav-fixed" id="mainNav" style="display:none;">
+    <a href="#" onclick="switchView('scan'); return false;">
+        <span class="nav-icon">📡</span>
+        <span>スキャン</span>
+    </a>
+    <a href="#" onclick="switchView('list'); return false;">
+        <span class="nav-icon">📋</span>
+        <span>履歴一覧</span>
+    </a>
+    <a href="#" onclick="switchView('register'); return false;">
+        <span class="nav-icon">➕</span>
+        <span>道具登録</span>
+    </a>
+    <a href="#" onclick="location.reload();">
+        <span class="nav-icon">🚪</span>
+        <span>ログアウト</span>
+    </a>
+</nav>
 <script>
     const GAS_URL = "https://script.google.com/macros/s/AKfycbz_aAZvAV3kRKlCrhtczqHj4CbdtKUDykMqN5RxZfk2-CHQ392VYcl7yD9wvtlgykL7YA/exec";
     let session = { sId: "", folderId: "" };
