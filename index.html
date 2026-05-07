@@ -8,9 +8,8 @@
     <style>
         body { background-color: #f8f9fa; padding-bottom: 80px; }
         .card-custom { border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); padding: 20px; margin-top: 15px; }
-        /* 下部ナビゲーション */
         .nav-fixed { position: fixed; bottom: 0; width: 100%; background: white; border-top: 1px solid #ddd; display: flex; justify-content: space-around; padding: 10px 0; z-index: 1000; }
-        .nav-fixed a { text-decoration: none; color: #666; display: flex; flex-direction: column; align-items: center; font-size: 10px; flex: 1; }
+        .nav-fixed a { text-decoration: none; color: #666; display: flex; flex-direction: column; align-items: center; font-size: 10px; flex: 1; transition: 0.2s; }
         /* アクティブなタブの色 */
         .nav-fixed a.active { color: #0d6efd; font-weight: bold; }
         .nav-icon { font-size: 24px; margin-bottom: 2px; }
@@ -23,7 +22,6 @@
 <body>
 
 <div class="container" id="app">
-    <!-- 1. ログイン画面 (初期表示) -->
     <div id="view-login" class="view-section active-view mt-5 text-center">
         <div class="card card-custom border-0">
             <h3 class="fw-bold mb-4">🔑 Login</h3>
@@ -34,36 +32,39 @@
         </div>
     </div>
 
-    <!-- 2. スキャン画面 (中身を追加) -->
     <div id="view-scan" class="view-section mt-3">
         <div class="card card-custom border-0 text-center">
             <h5 class="fw-bold mb-3">📡 タグスキャン</h5>
-            <button class="btn btn-outline-primary py-5 w-100" onclick="scanSingleTag()">
-                <span style="font-size: 2rem;">📱</span><br>スキャン開始
-            </button>
-            <div id="scanResult" class="mt-3 p-3 bg-light rounded small text-muted">
-                タグをスキャンしてください
+            <div class="py-5 bg-light rounded border mb-3" style="border-style: dashed !important;">
+                <p class="mb-0 text-muted">スキャン待機中...</p>
+                <div id="scanFeedback" class="fw-bold text-primary mt-2"></div>
             </div>
+            <button class="btn btn-outline-primary py-3 w-100" onclick="scanSingleTag()">
+                スキャンを開始する
+            </button>
         </div>
     </div>
 
-    <!-- 3. 履歴一覧画面 (中身を追加) -->
     <div id="view-list" class="view-section mt-3">
         <div class="card card-custom border-0">
-            <h5 class="fw-bold mb-3">📋 履歴一覧</h5>
-            <div id="historyContent" class="small text-muted text-center py-4">
-                履歴データはありません
+            <h5 class="fw-bold mb-3">📋 貸出・返却履歴</h5>
+            <div class="table-responsive">
+                <table class="table table-sm small">
+                    <thead><tr><th>日時</th><th>道具</th><th>状態</th><th>氏名</th></tr></thead>
+                    <tbody id="historyTbd">
+                        <tr><td colspan="4" class="text-center py-4 text-muted">履歴はありません</td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
 
-    <!-- 4. 道具登録画面 -->
     <div id="view-register" class="view-section mt-3">
         <div class="card card-custom border-0 mb-4">
             <h5 class="fw-bold">➕ 道具の登録・編集</h5>
             <div class="row g-2">
                 <div class="col-8"><input type="text" id="regName" class="form-control" placeholder="道具名"></div>
-                <div class="col-4"><button class="btn btn-secondary w-100" onclick="scanForRegister()">スキャン</button></div>
+                <div class="col-4"><button class="btn btn-secondary w-100" onclick="scanSingleTag('regTag')">スキャン</button></div>
             </div>
             <input type="text" id="regTag" class="form-control my-2 bg-light" readonly placeholder="タグID">
             <input type="text" id="regRemarks" class="form-control mb-2" placeholder="備考・メモ">
@@ -72,7 +73,7 @@
         </div>
 
         <div class="table-responsive">
-            <table class="table table-hover align-middle bg-white rounded shadow-sm">
+            <table class="table table-hover align-middle bg-white rounded shadow-sm small">
                 <thead class="table-light"><tr><th>写真</th><th>道具名</th><th>操作</th></tr></thead>
                 <tbody id="toolMasterTbd"></tbody>
             </table>
@@ -80,8 +81,7 @@
     </div>
 </div>
 
-<!-- 下部ナビゲーション (初期は非表示) -->
-<nav class="nav-fixed" id="mainNav" style="display:none;">
+<nav class="nav-fixed" id="mainNav" style="display: none;">
     <a href="#" id="nav-scan" onclick="switchView('scan'); return false;">
         <span class="nav-icon">📡</span><span>スキャン</span>
     </a>
@@ -92,7 +92,7 @@
         <span class="nav-icon">➕</span><span>登録</span>
     </a>
     <a href="#" onclick="location.reload();">
-        <span class="nav-icon">🚪</span><span>ログアウト</span>
+        <span class="nav-icon">🚪</span><span>終了</span>
     </a>
 </nav>
 
@@ -102,60 +102,50 @@
 
     async function callGas(p) { return await fetch(GAS_URL, { method: "POST", body: JSON.stringify(p) }); }
 
-    // 画面切り替えロジック
     function switchView(v) {
-        // 全セクションを非表示
+        // 画面切り替え
         document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active-view'));
-        // 対象セクションを表示
         const target = document.getElementById('view-' + v);
         if (target) target.classList.add('active-view');
 
-        // ナビゲーションのアクティブ状態を更新
+        // ナビゲーションの「アクティブ色」を更新
         document.querySelectorAll('.nav-fixed a').forEach(a => a.classList.remove('active'));
-        const navItem = document.getElementById('nav-' + v);
-        if (navItem) navItem.classList.add('active');
+        const activeNav = document.getElementById('nav-' + v);
+        if (activeNav) activeNav.classList.add('active');
 
-        // 登録画面ならマスタを読み込み
         if (v === 'register') loadToolMaster();
+        if (v === 'list') loadHistory();
     }
 
     async function handleLogin() {
         const id = document.getElementById('userId').value, pw = document.getElementById('userPw').value;
-        try {
-            const res = await callGas({ action: "login", id, pw });
-            const data = await res.json();
-            if (data.success) {
-                session = data;
-                document.getElementById('mainNav').style.display = "flex";
-                switchView('register'); // ログイン後は登録画面へ
-            } else {
-                alert("認証失敗");
-            }
-        } catch (e) {
-            alert("通信エラーが発生しました");
-        }
+        const res = await callGas({ action: "login", id, pw });
+        const data = await res.json();
+        if (data.success) {
+            session = data;
+            document.getElementById('mainNav').style.display = "flex";
+            switchView('register');
+        } else { alert("認証失敗"); }
     }
 
     async function loadToolMaster() {
         const tbd = document.getElementById('toolMasterTbd');
-        tbd.innerHTML = '<tr><td colspan="3" class="text-center small">読み込み中...</td></tr>';
-        
-        try {
-            const res = await callGas({ action: "fetchToolMaster", sId: session.sId });
-            const tools = await res.json();
-            
-            tbd.innerHTML = tools.map(t => `
-                <tr>
-                    <td><img src="${(t[3] && t[3].startsWith('http')) ? t[3] : ''}" class="thumb"></td>
-                    <td><div class="fw-bold">${t[0]}</div><div class="text-muted" style="font-size:0.7rem;">${t[1]}</div></td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-primary" onclick="editTool('${t[1]}','${t[0]}','${t[4]}')">編集</button>
-                    </td>
-                </tr>
-            `).join('');
-        } catch (e) {
-            tbd.innerHTML = '<tr><td colspan="3" class="text-center text-danger">取得失敗</td></tr>';
-        }
+        tbd.innerHTML = '<tr><td colspan="3" class="text-center">読み込み中...</td></tr>';
+        const res = await callGas({ action: "fetchToolMaster", sId: session.sId });
+        const tools = await res.json();
+        tbd.innerHTML = tools.map(t => `
+            <tr>
+                <td><img src="${(t[3] && t[3].startsWith('http')) ? t[3] : ''}" class="thumb"></td>
+                <td><b>${t[0]}</b><br><small class="text-muted">${t[1]}</small></td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary" onclick="editTool('${t[1]}','${t[0]}','${t[4]}')">編集</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    async function loadHistory() {
+        // 履歴読み込み処理
     }
 
     function editTool(tag, name, rem) {
@@ -167,14 +157,46 @@
         window.scrollTo(0,0);
     }
 
-    // 登録用のスキャン
-    async function scanForRegister() {
+    async function scanSingleTag(targetId = null) {
         try {
             const ndef = new NDEFReader(); 
             await ndef.scan();
-            ndef.onreading = e => { document.getElementById('regTag').value = e.serialNumber; };
+            ndef.onreading = e => {
+                const tagId = e.serialNumber;
+                if (targetId) {
+                    document.getElementById(targetId).value = tagId;
+                } else {
+                    document.getElementById('scanFeedback').innerText = "検出: " + tagId;
+                }
+            };
         } catch (e) { alert("NFCスキャンに失敗しました"); }
     }
+
+    async function registerTool() {
+        const btn = document.getElementById('btnReg');
+        btn.disabled = true; btn.innerText = "保存中...";
+        const imgFile = document.getElementById('regImage').files[0];
+        let base64 = "";
+        if (imgFile) {
+            base64 = await new Promise(r => { const rd = new FileReader(); rd.onload = e => r(e.target.result); rd.readAsDataURL(imgFile); });
+        }
+        try {
+            const res = await callGas({
+                action: "addToolMaster", sId: session.sId, folderId: session.folderId,
+                name: document.getElementById('regName').value, tag: document.getElementById('regTag').value,
+                remarks: document.getElementById('regRemarks').value, imageBlob: base64
+            });
+            const msg = await res.text();
+            alert(msg);
+            if(msg.includes("完了")) {
+                document.getElementById('regName').value = ""; document.getElementById('regTag').value = "";
+                document.getElementById('btnReg').innerText = "名簿に保存"; document.getElementById('btnReg').className = "btn btn-success w-100";
+                loadToolMaster();
+            }
+        } catch (e) { alert("エラーが発生しました"); }
+        btn.disabled = false;
+    }
 </script>
+
 </body>
 </html>
