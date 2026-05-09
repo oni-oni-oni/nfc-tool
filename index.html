@@ -342,7 +342,7 @@
         });
     }
 
-    // 登録・編集ボタンの実行処理（既存のregisterToolを拡張）
+    // 登録・編集ボタンの実行処理（エラー表示機能付き）
     async function registerTool() {
         const name = document.getElementById('regName').value;
         const tag = document.getElementById('regTag').value;
@@ -361,27 +361,34 @@
         }
 
         try {
-            await callGas({ 
+            const res = await callGas({ 
                 action: "addToolMaster", 
                 sId: session.sId, 
                 cCode: session.cCode,
-                folderId: session.folderId, // ★これを追加
+                folderId: session.folderId, 
                 name: name, 
                 tag: tag,
                 remarks: remarks,
                 imageBlob: base64Image,
-                existingUrl: isEditMode ? currentEditImageUrl : "" // 編集時は元のURLを渡す
+                existingUrl: isEditMode ? currentEditImageUrl : "" 
             });
 
-            alert(isEditMode ? "修正しました" : "登録しました");
+            // ★ここがデバッグの肝です：GASからの返事を解析します
+            const data = await res.json();
             
-            // モードをリセット
-            resetRegisterForm();
-            loadToolMaster();
-        } catch (e) { alert("エラーが発生しました"); }
+            if (data.success) {
+                alert(isEditMode ? "修正しました" : "登録しました");
+                resetRegisterForm();
+                loadToolMaster();
+            } else {
+                // ★失敗した原因を画面に出します
+                alert("登録失敗の原因: " + data.message);
+            }
+        } catch (e) { 
+            alert("通信エラー: " + e.message); 
+        }
         btn.disabled = false;
     }
-
     // フォームを真っさらに戻す関数
     function resetRegisterForm() {
         isEditMode = false;
