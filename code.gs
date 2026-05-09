@@ -175,3 +175,6 @@ function createJsonResponse(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
 }
+function fixPermission() {
+  DriveApp.createFile("test.txt", "test");
+}
