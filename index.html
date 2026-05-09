@@ -161,7 +161,7 @@
  
 <script>
     const GAS_URL = "https://script.google.com/macros/s/AKfycbz_aAZvAV3kRKlCrhtczqHj4CbdtKUDykMqN5RxZfk2-CHQ392VYcl7yD9wvtlgykL7YA/exec";
-    let session = { sId: "", comp: "", cCode: "" };
+    let session = { sId: data.sId, comp: data.compName, cCode: data.cCode, folderId: data.folderId };
     let tagIds = [];
     let masterData = [];
 
@@ -194,16 +194,23 @@
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
     async function handleLogin() {
-        const id = document.getElementById('userId').value, pw = document.getElementById('userPw').value;
+        const id = document.getElementById('userId').value;
+        const pw = document.getElementById('userPw').value;
+        const msg = document.getElementById('loginMsg');
+        if(!id || !pw) return msg.innerText = "入力してください";
+        msg.innerText = "認証中...";
         try {
-            const data = await callGas({ action: "login", id, pw });
+            const res = await callGas({ action: "login", id, pw });
+            const data = await res.json();
             if (data.success) {
-                // folderId を session に追加して保持
-                session = { sId: data.sId, comp: data.compName, cCode: data.cCode, folderId: data.folderId };
+                // 会社ID(cCode)を保持
+                session = { sId: data.sId, comp: data.compName, cCode: data.cCode };
+                document.getElementById('displayComp').innerText = "🏢 " + session.comp;
                 document.getElementById('mainNav').style.display = "flex";
-                switchView('scan', document.querySelector('nav a'));
-            } else { alert("認証失敗: " + (data.message || "")); }
-        } catch(e) { alert("通信エラー"); }
+                loadStaffList();
+                switchView('scan');
+            } else { msg.innerText = "失敗"; }
+        } catch (e) { msg.innerText = "接続エラー"; }
     }
 
     function switchView(v) {
@@ -330,46 +337,44 @@
         });
     }
 
+    // 登録・編集ボタンの実行処理（既存のregisterToolを拡張）
     async function registerTool() {
-        const name = document.getElementById('regName').value, tag = document.getElementById('regTag').value;
-        const remarks = document.getElementById('regRemarks').value, imgFile = document.getElementById('regImage').files[0];
+        const name = document.getElementById('regName').value;
+        const tag = document.getElementById('regTag').value;
+        const remarks = document.getElementById('regRemarks').value;
+        const imgFile = document.getElementById('regImage').files[0];
         const btn = document.getElementById('btnReg');
-        if(!name || !tag) return alert("名前とタグを入力してください");
 
-        btn.disabled = true; btn.innerText = "保存中...";
-        let base64 = "";
+        if(!name || !tag) return alert("道具名とタグIDは必須です");
+
+        btn.disabled = true;
+        btn.innerText = "処理中...";
+
+        let base64Image = "";
         if (imgFile) {
-            base64 = await new Promise(r => { const rd = new FileReader(); rd.onload = e => r(e.target.result); rd.readAsDataURL(imgFile); });
+            base64Image = await compressImage(imgFile);
         }
+
         try {
-            const res = await callGas({
+            await callGas({ 
                 action: "addToolMaster", 
                 sId: session.sId, 
-                folderId: session.folderId, // フォルダIDを送信
-                name: name, tag: tag, remarks: remarks, imageBlob: base64,
-                existingUrl: isEditMode ? currentEditImageUrl : "" 
+                cCode: session.cCode,
+                folderId: session.folderId, // ★これを追加
+                name: name, 
+                tag: tag,
+                remarks: remarks,
+                imageBlob: base64Image,
+                existingUrl: isEditMode ? currentEditImageUrl : "" // 編集時は元のURLを渡す
             });
-            const data = await res.json();
-            if(data.success) {
-                alert(data.message);
-                resetRegisterForm();
-                loadToolMaster();
-            } else { alert("登録エラー: " + data.message); }
-        } catch (e) { alert("通信エラーが発生しました"); }
-        btn.disabled = false;
-    }
 
-    // 欠損していた削除機能を復元
-    async function deleteToolFull(name, tag) {
-        if (!confirm(`道具「${name}」を完全に削除しますか？\n（稼働状況の履歴からも消去されます）`)) return;
-        try {
-            const res = await callGas({ action: "deleteToolFull", sId: session.sId, tagId: tag });
-            const data = await res.json();
-            if (data.success) {
-                alert("削除しました");
-                loadToolMaster();
-            } else { alert("削除に失敗しました"); }
-        } catch (e) { alert("通信エラー"); }
+            alert(isEditMode ? "修正しました" : "登録しました");
+            
+            // モードをリセット
+            resetRegisterForm();
+            loadToolMaster();
+        } catch (e) { alert("エラーが発生しました"); }
+        btn.disabled = false;
     }
 
     // フォームを真っさらに戻す関数
@@ -498,6 +503,14 @@
                 if (navigator.vibrate) navigator.vibrate(100); 
             };
         } catch (e) { alert("NFCエラー"); }
+    }
+    async function deleteToolFull(name, tag) {
+        if (!confirm(`道具「${name}」を削除しますか？`)) return;
+        try {
+            await callGas({ action: "deleteToolFull", sId: session.sId, tagId: tag });
+            alert("削除しました");
+            loadToolMaster();
+        } catch (e) { alert("削除エラー"); }
     }
 </script>
 </body>
