@@ -204,7 +204,7 @@
             const data = await res.json();
             if (data.success) {
                 // 会社ID(cCode)を保持
-                session = { sId: data.sId, comp: data.compName, cCode: data.cCode };
+                session = { sId: data.sId, comp: data.compName, cCode: data.cCode, folderId: data.folderId };
                 document.getElementById('displayComp').innerText = "🏢 " + session.comp;
                 document.getElementById('mainNav').style.display = "flex";
                 loadStaffList();
@@ -356,23 +356,32 @@
         }
 
         try {
-            await callGas({ 
+            const res = await callGas({ 
                 action: "addToolMaster", 
                 sId: session.sId, 
                 cCode: session.cCode,
+                folderId: session.folderId, // ★これを追加
                 name: name, 
                 tag: tag,
                 remarks: remarks,
                 imageBlob: base64Image,
-                existingUrl: isEditMode ? currentEditImageUrl : "" // 編集時は元のURLを渡す
+                existingUrl: isEditMode ? currentEditImageUrl : "" 
             });
 
+            const data = await res.json(); // ★サーバーからの返答を確認
+            if (!data.success) {
+                alert("登録エラー: " + data.message);
+                btn.disabled = false;
+                btn.innerText = isEditMode ? "🛠 上書き保存する" : "名簿に登録";
+                return;
+            }
+
             alert(isEditMode ? "修正しました" : "登録しました");
-            
-            // モードをリセット
             resetRegisterForm();
             loadToolMaster();
-        } catch (e) { alert("エラーが発生しました"); }
+        } catch (e) { 
+            alert("通信エラーが発生しました"); 
+        }
         btn.disabled = false;
     }
 

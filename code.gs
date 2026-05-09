@@ -78,12 +78,10 @@ function doPost(e) {
       const data = sheet.getDataRange().getValues();
       const targetTag = params.tag.toString().trim().toUpperCase();
       
-      // HTML側から existingUrl が送られていれば引き継ぎ、なければ空にする
       let imageUrl = params.existingUrl || ""; 
 
-      // 新しい画像データがあれば保存処理
       if (params.imageBlob) {
-        // ※ フォルダIDがない場合のフォールバック（ルート保存）
+        // フォルダIDがあれば指定フォルダ、なければマイドライブの直下に保存
         const folder = params.folderId ? DriveApp.getFolderById(params.folderId) : DriveApp.getRootFolder();
         const blob = Utilities.newBlob(Utilities.base64Decode(params.imageBlob.split(",")[1]), "image/jpeg", "tool_" + targetTag + ".jpg");
         const file = folder.createFile(blob);
@@ -99,12 +97,14 @@ function doPost(e) {
       }
 
       if (rowIndex > 0) {
+        // 上書き（1:名前, 3:画像, 4:備考）
         sheet.getRange(rowIndex, 1).setValue(params.name);
-        sheet.getRange(rowIndex, 4).setValue(imageUrl); // 空文字でも上書き（画像削除対応）
-        sheet.getRange(rowIndex, 5).setValue(params.remarks);
+        sheet.getRange(rowIndex, 3).setValue(imageUrl); 
+        sheet.getRange(rowIndex, 4).setValue(params.remarks);
         return createJsonResponse({ success: true, message: "上書き完了" });
       } else {
-        sheet.appendRow([params.name, params.tag, "", imageUrl, params.remarks]);
+        // 新規登録（A:名前, B:タグ, C:画像, D:備考 の順番に修正）
+        sheet.appendRow([params.name, params.tag, imageUrl, params.remarks]);
         return createJsonResponse({ success: true, message: "新規登録完了" });
       }
     }
