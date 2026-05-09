@@ -178,6 +178,14 @@
     let isEditMode = false; // 現在が編集モードかどうか
     let currentEditImageUrl = ""; // 編集中の既存画像URL
 
+    function getDisplayImageUrl(url) {
+        if (!url) return "";
+        if (url.includes("id=")) {
+            const id = url.split("id=")[1].split("&")[0];
+            return `https://drive.google.com/thumbnail?id=${id}&sz=w400`;
+        }
+        return url;
+    }
     // 編集ボタンを押した時の処理
     function editTool(name, tag, imageUrl, remarks) {
         isEditMode = true;
@@ -293,9 +301,10 @@
                 return;
             }
 
-            tbd.innerHTML = tools.map(t => {
+                tbd.innerHTML = tools.map(t => {
                 // 画像がある場合は表示、ない場合は「なし」
-                const imgTag = t[2] ? `<img src="${t[2]}" style="width:45px; height:45px; object-fit:cover; border-radius:4px;">` : `<span class="text-muted small">なし</span>`;
+                const displayUrl = getDisplayImageUrl(t[2]);
+                const imgTag = displayUrl ? `<img src="${displayUrl}" style="width:45px; height:45px; object-fit:cover; border-radius:4px; cursor:pointer;" onclick="window.open('${t[2] || ''}')">` : `<span class="text-muted small">なし</span>`;
                 
                 return `
                 <tr>
@@ -447,15 +456,17 @@
         const imageMap = {};
         tools.forEach(t => { imageMap[t[0]] = t[2]; }); // 道具名をキー、URLを値にする
 
+
         tbd.innerHTML = data.map(r => {
             const toolName = r[1];
-            const imageUrl = imageMap[toolName]; // 名簿から画像を取得
+            const rawUrl = imageMap[toolName]; // 名簿から画像を取得
+            const displayUrl = getDisplayImageUrl(rawUrl);
             
             // 画像HTMLの生成
-            const imgHtml = imageUrl ? 
-                `<img src="${imageUrl}" style="width:40px; height:40px; object-fit:cover; border-radius:6px; cursor:pointer;" onclick="window.open('${imageUrl}')">` : 
+            const imgHtml = displayUrl ? 
+                `<img src="${displayUrl}" style="width:40px; height:40px; object-fit:cover; border-radius:6px; cursor:pointer;" onclick="window.open('${rawUrl}')">` : 
                 `<div class="bg-light text-muted d-flex align-items-center justify-content-center" style="width:40px; height:40px; border-radius:6px; font-size:0.5rem;">なし</div>`;
-
+                
             // 日付フォーマット
             const date = r[6] ? new Date(r[6]) : null;
             const dateStr = date ? `${date.getMonth()+1}/${date.getDate()} ${date.getHours()}:${('0'+date.getMinutes()).slice(-2)}` : "-";
