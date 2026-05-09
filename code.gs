@@ -99,12 +99,13 @@ function doPost(e) {
       }
 
       if (rowIndex > 0) {
-        sheet.getRange(rowIndex, 1).setValue(params.name);
-        sheet.getRange(rowIndex, 3).setValue(imageUrl); // ★C列に修正
-        sheet.getRange(rowIndex, 4).setValue(params.remarks); // ★D列に修正
+        sh.getRange(rowIndex, 1).setValue(params.name);
+        sh.getRange(rowIndex, 3).setValue(imageUrl); // 3列目(C列)に画像
+        sh.getRange(rowIndex, 4).setValue(params.remarks); // 4列目(D列)に備考
         return createJsonResponse({ success: true, message: "上書き完了" });
       } else {
-        sheet.appendRow([params.name, params.tag, imageUrl, params.remarks]); // ★余分な "" を削除
+        // A:名前, B:タグ, C:画像, D:備考 の順に保存
+        sh.appendRow([params.name, params.tag, imageUrl, params.remarks]); 
         return createJsonResponse({ success: true, message: "新規登録完了" });
       }
     }
