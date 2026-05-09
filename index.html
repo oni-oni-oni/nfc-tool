@@ -161,7 +161,9 @@
  
 <script>
     const GAS_URL = "https://script.google.com/macros/s/AKfycbz_aAZvAV3kRKlCrhtczqHj4CbdtKUDykMqN5RxZfk2-CHQ392VYcl7yD9wvtlgykL7YA/exec";
-    let session = { sId: data.sId, comp: data.compName, cCode: data.cCode, folderId: data.folderId };
+    
+    // 最初は空っぽの状態で準備しておきます
+    let session = { sId: "", comp: "", cCode: "", folderId: "" };
     let tagIds = [];
     let masterData = [];
 
@@ -193,6 +195,9 @@
         // 画面上部（フォーム）へスクロール
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
+
+    
+
     async function handleLogin() {
         const id = document.getElementById('userId').value;
         const pw = document.getElementById('userPw').value;
@@ -201,10 +206,16 @@
         msg.innerText = "認証中...";
         try {
             const res = await callGas({ action: "login", id, pw });
-            const data = await res.json();
+            const data = await res.json(); // ここで初めて data が定義されます
             if (data.success) {
-                // 会社ID(cCode)を保持
-                session = { sId: data.sId, comp: data.compName, cCode: data.cCode };
+                // ★ ここで受け取ったデータを session に代入します
+                session = { 
+                    sId: data.sId, 
+                    comp: data.compName, 
+                    cCode: data.cCode, 
+                    folderId: data.folderId 
+                };
+                
                 document.getElementById('displayComp').innerText = "🏢 " + session.comp;
                 document.getElementById('mainNav').style.display = "flex";
                 loadStaffList();
