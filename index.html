@@ -194,23 +194,16 @@
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
     async function handleLogin() {
-        const id = document.getElementById('userId').value;
-        const pw = document.getElementById('userPw').value;
-        const msg = document.getElementById('loginMsg');
-        if(!id || !pw) return msg.innerText = "入力してください";
-        msg.innerText = "認証中...";
+        const id = document.getElementById('userId').value, pw = document.getElementById('userPw').value;
         try {
-            const res = await callGas({ action: "login", id, pw });
-            const data = await res.json();
+            const data = await callGas({ action: "login", id, pw });
             if (data.success) {
-                // 会社ID(cCode)を保持
+                // folderId を session に追加して保持
                 session = { sId: data.sId, comp: data.compName, cCode: data.cCode, folderId: data.folderId };
-                document.getElementById('displayComp').innerText = "🏢 " + session.comp;
                 document.getElementById('mainNav').style.display = "flex";
-                loadStaffList();
-                switchView('scan');
-            } else { msg.innerText = "失敗"; }
-        } catch (e) { msg.innerText = "接続エラー"; }
+                switchView('scan', document.querySelector('nav a'));
+            } else { alert("認証失敗: " + (data.message || "")); }
+        } catch(e) { alert("通信エラー"); }
     }
 
     function switchView(v) {
@@ -337,52 +330,46 @@
         });
     }
 
-    // 登録・編集ボタンの実行処理（既存のregisterToolを拡張）
     async function registerTool() {
-        const name = document.getElementById('regName').value;
-        const tag = document.getElementById('regTag').value;
-        const remarks = document.getElementById('regRemarks').value;
-        const imgFile = document.getElementById('regImage').files[0];
+        const name = document.getElementById('regName').value, tag = document.getElementById('regTag').value;
+        const remarks = document.getElementById('regRemarks').value, imgFile = document.getElementById('regImage').files[0];
         const btn = document.getElementById('btnReg');
+        if(!name || !tag) return alert("名前とタグを入力してください");
 
-        if(!name || !tag) return alert("道具名とタグIDは必須です");
-
-        btn.disabled = true;
-        btn.innerText = "処理中...";
-
-        let base64Image = "";
+        btn.disabled = true; btn.innerText = "保存中...";
+        let base64 = "";
         if (imgFile) {
-            base64Image = await compressImage(imgFile);
+            base64 = await new Promise(r => { const rd = new FileReader(); rd.onload = e => r(e.target.result); rd.readAsDataURL(imgFile); });
         }
-
         try {
-            const res = await callGas({ 
+            const res = await callGas({
                 action: "addToolMaster", 
                 sId: session.sId, 
-                cCode: session.cCode,
-                folderId: session.folderId, // ★これを追加
-                name: name, 
-                tag: tag,
-                remarks: remarks,
-                imageBlob: base64Image,
+                folderId: session.folderId, // フォルダIDを送信
+                name: name, tag: tag, remarks: remarks, imageBlob: base64,
                 existingUrl: isEditMode ? currentEditImageUrl : "" 
             });
-
-            const data = await res.json(); // ★サーバーからの返答を確認
-            if (!data.success) {
-                alert("登録エラー: " + data.message);
-                btn.disabled = false;
-                btn.innerText = isEditMode ? "🛠 上書き保存する" : "名簿に登録";
-                return;
-            }
-
-            alert(isEditMode ? "修正しました" : "登録しました");
-            resetRegisterForm();
-            loadToolMaster();
-        } catch (e) { 
-            alert("通信エラーが発生しました"); 
-        }
+            const data = await res.json();
+            if(data.success) {
+                alert(data.message);
+                resetRegisterForm();
+                loadToolMaster();
+            } else { alert("登録エラー: " + data.message); }
+        } catch (e) { alert("通信エラーが発生しました"); }
         btn.disabled = false;
+    }
+
+    // 欠損していた削除機能を復元
+    async function deleteToolFull(name, tag) {
+        if (!confirm(`道具「${name}」を完全に削除しますか？\n（稼働状況の履歴からも消去されます）`)) return;
+        try {
+            const res = await callGas({ action: "deleteToolFull", sId: session.sId, tagId: tag });
+            const data = await res.json();
+            if (data.success) {
+                alert("削除しました");
+                loadToolMaster();
+            } else { alert("削除に失敗しました"); }
+        } catch (e) { alert("通信エラー"); }
     }
 
     // フォームを真っさらに戻す関数

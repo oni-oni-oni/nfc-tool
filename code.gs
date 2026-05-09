@@ -12,41 +12,33 @@ function doPost(e) {
   const sId = params.sId;
 
   try {
-    // --- 1. ログイン & フォルダID自動抽出 ---
+    const ss = SpreadsheetApp.openById(sId || MASTER_SHEET_ID);
+
+    // --- 1. ログイン ---
     if (action === "login") {
-      const ss = SpreadsheetApp.openById(MASTER_SHEET_ID);
-      const data = ss.getSheets()[0].getDataRange().getValues();
+      const masterSs = SpreadsheetApp.openById(MASTER_SHEET_ID);
+      const data = masterSs.getSheets()[0].getDataRange().getValues();
       for (let i = 1; i < data.length; i++) {
         if (data[i][0].toString().trim() === params.id.trim() && 
             data[i][1].toString().trim() === params.pw.trim()) {
           
           let rawFolder = data[i][5] || ""; 
-          let folderId = rawFolder;
-          if (rawFolder.includes("folders/")) {
-            folderId = rawFolder.split("folders/")[1].split("?")[0].split("/")[0];
-          }
+          let folderId = rawFolder.includes("folders/") ? rawFolder.split("folders/")[1].split("/")[0].split("?")[0] : rawFolder;
 
-          // JSON形式で返却（GitHubからのアクセスを許可）
           return createJsonResponse({
-            success: true, 
-            sId: data[i][2], 
-            compName: data[i][4] || "Guest", 
-            cCode: data[i][0], 
-            folderId: folderId 
+            success: true, sId: data[i][2], compName: data[i][4] || "Guest", cCode: data[i][0], folderId: folderId 
           });
         }
       }
-      return createJsonResponse({ success: false, message: "IDまたはパスワードが違います" });
+      return createJsonResponse({ success: false, message: "認証失敗" });
     }
 
-    const ss = SpreadsheetApp.openById(sId);
-
-    // --- 2. 稼働状況の更新 (画像に基づく列のズレ修正) ---
+    // --- 2. 稼働状況の更新 (列のズレを修正) ---
     if (action === "update") {
       const sheet = ss.getSheets()[0];
       const now = new Date();
       
-      // 道具名簿から、タグIDに紐づく「道具名」を検索するための準備
+      // 名簿から道具名を取得する準備
       const toolData = ss.getSheetByName("道具名簿").getDataRange().getValues();
       const toolMap = {};
       for (let i = 1; i < toolData.length; i++) {
@@ -54,62 +46,54 @@ function doPost(e) {
       }
 
       params.tagIds.forEach(id => {
-        const tagUpper = id.toString().trim().toUpperCase();
-        const toolName = toolMap[tagUpper] || "不明な道具"; // 名簿になければ不明とする
-
-        // 画像のレイアウトに厳格に合わせる
-        // [A:No, B:道具, C:場所, D:ユーザー, E:状況, F:管理タグID, G:更新日]
+        const toolName = toolMap[id.toString().trim().toUpperCase()] || "...";
+        // レイアウト: [A:No, B:道具, C:場所, D:ユーザー, E:状況, F:管理タグID, G:更新日]
         sheet.appendRow([
-          "",                  // A: No
-          toolName,            // B: 道具
-          params.placeName || "", // C: 場所 (index.htmlから送られる値)
-          params.userName,     // D: ユーザー
-          params.status,       // E: 状況 (貸出中/保管中)
-          id,                  // F: 管理タグID
-          now                  // G: 更新日
+          "",               // A: No
+          toolName,         // B: 道具
+          params.placeName || "", // C: 場所
+          params.userName,  // D: ユーザー
+          params.status,    // E: 状況
+          id,               // F: 管理タグID
+          now               // G: 更新日
         ]);
       });
-      return createJsonResponse({ success: true, message: "更新完了" });
+      return createJsonResponse({ success: true, message: params.status + "完了" });
     }
 
-    // --- 3. 道具の登録・上書き (画像保存対応) ---
+    // --- 3. 道具の登録・上書き ---
     if (action === "addToolMaster") {
-      const sheet = ss.getSheetByName("道具名簿");
-      const data = sheet.getDataRange().getValues();
-      const targetTag = params.tag.toString().trim().toUpperCase();
+      const sh = ss.getSheetByName("道具名簿");
+      let imageUrl = params.existingUrl || "";
       
-      let imageUrl = params.existingUrl || ""; 
-
-      if (params.imageBlob) {
-        // フォルダIDがあれば指定フォルダ、なければマイドライブの直下に保存
-        const folder = params.folderId ? DriveApp.getFolderById(params.folderId) : DriveApp.getRootFolder();
-        const blob = Utilities.newBlob(Utilities.base64Decode(params.imageBlob.split(",")[1]), "image/jpeg", "tool_" + targetTag + ".jpg");
+      if (params.imageBlob && params.folderId) {
+        const folder = DriveApp.getFolderById(params.folderId);
+        const blob = Utilities.newBlob(Utilities.base64Decode(params.imageBlob.split(",")[1]), "image/jpeg", "tool_" + params.tag + ".jpg");
         const file = folder.createFile(blob);
         file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
         imageUrl = "https://drive.google.com/uc?export=view&id=" + file.getId();
       }
 
+      const data = sh.getDataRange().getValues();
       let rowIndex = -1;
+      const targetTag = params.tag.toString().trim().toUpperCase();
       for (let i = 1; i < data.length; i++) {
-        if (data[i][1] && data[i][1].toString().trim().toUpperCase() === targetTag) { 
-          rowIndex = i + 1; break; 
-        }
+        if (data[i][1] && data[i][1].toString().trim().toUpperCase() === targetTag) { rowIndex = i + 1; break; }
       }
 
       if (rowIndex > 0) {
-        // 上書き（1:名前, 3:画像, 4:備考）
-        sheet.getRange(rowIndex, 1).setValue(params.name);
-        sheet.getRange(rowIndex, 3).setValue(imageUrl); 
-        sheet.getRange(rowIndex, 4).setValue(params.remarks);
+        // [名前, タグID, 場所(空), 画像, 備考]
+        sh.getRange(rowIndex, 1).setValue(params.name);
+        if (imageUrl) sh.getRange(rowIndex, 4).setValue(imageUrl);
+        sh.getRange(rowIndex, 5).setValue(params.remarks);
         return createJsonResponse({ success: true, message: "上書き完了" });
       } else {
-        // 新規登録（A:名前, B:タグ, C:画像, D:備考 の順番に修正）
-        sheet.appendRow([params.name, params.tag, imageUrl, params.remarks]);
+        sh.appendRow([params.name, params.tag, "", imageUrl, params.remarks]);
         return createJsonResponse({ success: true, message: "新規登録完了" });
       }
     }
 
-    // --- 4. 道具の削除 ---
+    // --- 4. 削除機能の復元 ---
     if (action === "deleteToolFull") {
       const tag = params.tagId.toString().trim().toUpperCase();
       [ss.getSheetByName("道具名簿"), ss.getSheets()[0]].forEach(sh => {
@@ -123,44 +107,18 @@ function doPost(e) {
       return createJsonResponse({ success: true, message: "削除完了" });
     }
 
-    // --- 5. 社員の追加・削除 (index.htmlの処理に対応) ---
-    if (action === "addMyStaff") {
-      const sheet = ss.getSheetByName("社員名簿");
-      sheet.appendRow([params.cCode, params.dept, params.name]);
-      return createJsonResponse({ success: true });
-    }
-    if (action === "deleteStaff") {
-      const sheet = ss.getSheetByName("社員名簿");
-      const d = sheet.getDataRange().getValues();
-      for (let i = d.length - 1; i >= 1; i--) {
-        if (d[i][2] && d[i][2].toString().trim() === params.name.trim()) {
-          sheet.deleteRow(i + 1);
-        }
-      }
-      return createJsonResponse({ success: true });
-    }
-
-    // --- 6. 各種データ取得系 ---
-    if (action === "fetchToolMaster") {
-      const data = ss.getSheetByName("道具名簿").getDataRange().getValues();
-      return createJsonResponse(data.slice(1));
-    }
-    if (action === "fetchData") {
-      const data = ss.getSheets()[0].getDataRange().getValues();
-      return createJsonResponse(data);
-    }
-    if (action === "fetchStaff") {
-      const data = ss.getSheetByName("社員名簿").getDataRange().getValues();
-      return createJsonResponse(data.slice(1));
-    }
+    // --- 5. 取得系 ---
+    if (action === "fetchToolMaster") return createJsonResponse(ss.getSheetByName("道具名簿").getDataRange().getValues().slice(1));
+    if (action === "fetchStaff") return createJsonResponse(ss.getSheetByName("社員名簿").getDataRange().getValues().slice(1));
+    if (action === "fetchHistory") return createJsonResponse(ss.getSheets()[0].getDataRange().getValues().slice(1).reverse());
 
   } catch (e) {
-    return createJsonResponse({ success: false, message: "Error: " + e.message });
+    return createJsonResponse({ success: false, message: e.message });
   }
 }
 
-// ★最重要：GitHub(外部サイト)から通信エラー(CORS)を出さずに結果を返すための共通関数
 function createJsonResponse(obj) {
-  return ContentService.createTextOutput(JSON.stringify(obj))
-    .setMimeType(ContentService.MimeType.JSON);
+  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
 }
+
+function test() { DriveApp.getRootFolder(); }
