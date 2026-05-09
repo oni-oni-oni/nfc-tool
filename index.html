@@ -164,6 +164,7 @@
     
     // 最初は空っぽの状態で準備しておきます
     let session = { sId: "", comp: "", cCode: "", folderId: "" };
+    
     let tagIds = [];
     let masterData = [];
 
@@ -196,8 +197,6 @@
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
-    
-
     async function handleLogin() {
         const id = document.getElementById('userId').value;
         const pw = document.getElementById('userPw').value;
@@ -206,15 +205,10 @@
         msg.innerText = "認証中...";
         try {
             const res = await callGas({ action: "login", id, pw });
-            const data = await res.json(); // ここで初めて data が定義されます
+            const data = await res.json();
             if (data.success) {
-                // ★ ここで受け取ったデータを session に代入します
-                session = { 
-                    sId: data.sId, 
-                    comp: data.compName, 
-                    cCode: data.cCode, 
-                    folderId: data.folderId 
-                };
+                // ★修正2: ログインに成功して「data」が届いたここで、初めて中身をセットします
+                session = { sId: data.sId, comp: data.compName, cCode: data.cCode, folderId: data.folderId };
                 
                 document.getElementById('displayComp').innerText = "🏢 " + session.comp;
                 document.getElementById('mainNav').style.display = "flex";
