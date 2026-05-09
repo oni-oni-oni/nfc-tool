@@ -72,44 +72,54 @@ function doPost(e) {
       return createJsonResponse({ success: true, message: "更新完了" });
     }
 
-    // --- 3. 道具の登録・上書き (画像保存対応) ---
+    // --- 3. 道具の登録・上書き ---
     if (action === "addToolMaster") {
-      const sheet = ss.getSheetByName("道具名簿");
-      const data = sheet.getDataRange().getValues();
-      const targetTag = params.tag.toString().trim().toUpperCase();
+      const sh = ss.getSheetByName("道具名簿");
+      const historySheet = ss.getSheets()[0]; // 稼働状況（一番左のシート）
+      let imageUrl = params.existingUrl || "";
       
-      // HTML側から existingUrl が送られていれば引き継ぎ、なければ空にする
-      let imageUrl = params.existingUrl || ""; 
-
-      // 新しい画像データがあれば保存処理
-      if (params.imageBlob) {
-        // ※ フォルダIDがない場合のフォールバック（ルート保存）
-        const folder = params.folderId ? DriveApp.getFolderById(params.folderId) : DriveApp.getRootFolder();
-        const blob = Utilities.newBlob(Utilities.base64Decode(params.imageBlob.split(",")[1]), "image/jpeg", "tool_" + targetTag + ".jpg");
+      if (params.imageBlob && params.folderId) {
+        const folder = DriveApp.getFolderById(params.folderId);
+        const blob = Utilities.newBlob(Utilities.base64Decode(params.imageBlob.split(",")[1]), "image/jpeg", "tool_" + params.tag + ".jpg");
         const file = folder.createFile(blob);
         file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
         imageUrl = "https://drive.google.com/uc?export=view&id=" + file.getId();
       }
 
+      const data = sh.getDataRange().getValues();
       let rowIndex = -1;
+      const targetTag = params.tag.toString().trim().toUpperCase();
       for (let i = 1; i < data.length; i++) {
-        if (data[i][1] && data[i][1].toString().trim().toUpperCase() === targetTag) { 
-          rowIndex = i + 1; break; 
-        }
+        if (data[i][1] && data[i][1].toString().trim().toUpperCase() === targetTag) { rowIndex = i + 1; break; }
       }
 
+      const now = new Date();
       if (rowIndex > 0) {
+        // 【上書きの場合】名簿を更新するだけ
         sh.getRange(rowIndex, 1).setValue(params.name);
-        sh.getRange(rowIndex, 3).setValue(imageUrl); // 3列目(C列)に画像
-        sh.getRange(rowIndex, 4).setValue(params.remarks); // 4列目(D列)に備考
-        return createJsonResponse({ success: true, message: "上書き完了" });
+        if (imageUrl) sh.getRange(rowIndex, 3).setValue(imageUrl);
+        sh.getRange(rowIndex, 4).setValue(params.remarks);
+        return createJsonResponse({ success: true, message: "名簿を更新しました" });
       } else {
-        // A:名前, B:タグ, C:画像, D:備考 の順に保存
-        sh.appendRow([params.name, params.tag, imageUrl, params.remarks]); 
-        return createJsonResponse({ success: true, message: "新規登録完了" });
+        // 【新規登録の場合】
+        // 1. 道具名簿に追加
+        sh.appendRow([params.name, params.tag, imageUrl, params.remarks]);
+        
+        // 2. 稼働状況（履歴）にも「保管中」として自動追加！
+        // レイアウト: [A:No, B:道具, C:場所, D:ユーザー, E:状況, F:タグID, G:更新日]
+        historySheet.appendRow([
+          "",               // A: No
+          params.name,      // B: 道具名
+          "倉庫",           // C: 初期場所
+          "管理者",         // D: ユーザー
+          "保管中",         // E: 状況
+          params.tag,       // F: 管理タグID
+          now               // G: 更新日
+        ]);
+        
+        return createJsonResponse({ success: true, message: "名簿と稼働状況に登録しました" });
       }
     }
-
     // --- 4. 道具の削除 ---
     if (action === "deleteToolFull") {
       const tag = params.tagId.toString().trim().toUpperCase();

@@ -359,7 +359,7 @@
         if (imgFile) {
             base64Image = await compressImage(imgFile);
         }
-
+        alert("現在のフォルダIDは: " + session.folderId);
         try {
             const res = await callGas({ 
                 action: "addToolMaster", 
