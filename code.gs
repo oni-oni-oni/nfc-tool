@@ -15,10 +15,11 @@ function doPost(e) {
     // --- 1. ログイン & フォルダID自動抽出 ---
     if (action === "login") {
       const ss = SpreadsheetApp.openById(MASTER_SHEET_ID);
-      const data = ss.getSheets()[0].getDataRange().getValues();
+      const data = ss.getSheets()[0].getDataRange().getValues(); // ログイン情報シート
+      
       for (let i = 1; i < data.length; i++) {
-        if (data[i][0].toString().trim() === params.id.trim() && 
-            data[i][1].toString().trim() === params.pw.trim()) {
+        if (data[i][0] && data[i][0].toString().trim() === params.id.trim() && 
+            data[i][1] && data[i][1].toString().trim() === params.pw.trim()) {
           
           let rawFolder = data[i][5] || ""; 
           let folderId = rawFolder;
@@ -26,16 +27,28 @@ function doPost(e) {
             folderId = rawFolder.split("folders/")[1].split("?")[0].split("/")[0];
           }
 
-          // JSON形式で返却（GitHubからのアクセスを許可）
+          // ★★★ セキュリティ機能：トークン（暗号）の発行と記録 ★★★
+          const token = Utilities.getUuid(); // 絶対に推測できないランダムな文字列（トークン）を作成
+          
+          const expire = new Date();
+          expire.setHours(expire.getHours() + 12); // 有効期限を「ログインから12時間後」に設定
+          
+          const sessionSheet = ss.getSheetByName("セッション管理");
+          if (sessionSheet) {
+            sessionSheet.appendRow([token, data[i][0], expire]); // スプレッドシートに記録
+          }
+
+          // JSON形式でスマホへ返却
           return createJsonResponse({
-            success: true, 
-            sId: data[i][2], 
-            compName: data[i][4] || "Guest", 
-            cCode: data[i][0], 
-            folderId: folderId 
+            success: true,
+            sId: token,           // ★重要：スマホには企業コード等ではなく「トークン」を渡す
+            cCode: data[i][0],    // 企業コード（A列）
+            compName: data[i][2], // 会社名（C列）※列が違う場合は元の数字に合わせてください
+            folderId: folderId
           });
         }
       }
+      // 一致しなかった場合
       return createJsonResponse({ success: false, message: "IDまたはパスワードが違います" });
     }
 
