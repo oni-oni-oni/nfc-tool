@@ -595,6 +595,10 @@
             loadToolMaster();
         } catch (e) { alert("削除エラー"); }
     }
+    // ★これを追加：アプリを開いた時に「ログイン画面」を最初に表示させる
+    window.onload = function() {
+        switchView('login');
+    };
 </script>
 </body>
 </html>
