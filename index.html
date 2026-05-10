@@ -454,19 +454,27 @@
     }
 
 
+// ★修正：通信処理がなくなり、純粋に画面を描くだけの爆速処理になりました
     function renderTable(data) {
         const tbd = document.getElementById('listTbd');
         if(!tbd) return;
         
-        // すでに取得済みの記憶（cachedTools）から画像URLのマップを作る
-        const imageMap = {};
+        // ★修正1：タグID（t[1]）をキーにして、画像URLと「最新の道具名」をセットで記憶する
+        const masterMap = {};
         if (cachedTools) {
-            cachedTools.forEach(t => { imageMap[t[0]] = t[2]; });
+            cachedTools.forEach(t => { 
+                masterMap[t[1]] = { url: t[2], name: t[0] }; 
+            });
         }
 
         tbd.innerHTML = data.map(r => {
-            const toolName = r[1];
-            const rawUrl = imageMap[toolName]; 
+            const tagId = r[5]; // ★修正2：F列（0から数えて5番目）のタグIDを取得
+            
+            // マスターデータからタグIDをキーにして情報を引き出す
+            const masterInfo = masterMap[tagId] || {};
+            const rawUrl = masterInfo.url; // タグIDに紐づく画像URL
+            const toolName = masterInfo.name || r[1]; // マスターに最新の名前があればそれを使用し、なければ履歴データ(B列)を使う
+            
             const displayUrl = getDisplayImageUrl(rawUrl);
             
             // 画像HTMLの生成
@@ -495,7 +503,6 @@
             </tr>`;
         }).join('');
     }
-
     function updateFilterOptions(data) {
         const make = (id, idx, label) => {
             const target = document.getElementById(id);
