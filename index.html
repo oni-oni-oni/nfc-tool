@@ -531,13 +531,34 @@
 
     async function sendToGas(status) {
         if (tagIds.length === 0) return alert("未スキャン");
+        
         const selectedUser = document.getElementById('scanUserSelect').value;
+        // ★追加：入力された場所を取得
+        const placeInput = document.getElementById('scanPlaceInput').value; 
+        
         if (status === '貸出中' && !selectedUser) return alert("社員を選択してください");
+        
         document.getElementById('status').innerText = "送信中...";
         try {
-            await callGas({ action: "update", sId: session.sId, tagIds: tagIds, status: status, userName: selectedUser || "返却済", placeName: "現場" });
-            alert("更新完了"); tagIds = []; document.getElementById('scanList').innerHTML = ""; document.getElementById('count').innerText = "0";
-            loadAndShowList(); switchView('list');
+            await callGas({ 
+                action: "update", 
+                sId: session.sId, 
+                tagIds: tagIds, 
+                status: status, 
+                userName: selectedUser || "返却済", 
+                // ★修正："現場" 固定ではなく入力された値（空なら空のまま）を送る
+                placeName: placeInput 
+            });
+            
+            alert("更新完了"); 
+            // ★追加：送信が終わったら場所の入力欄を空にする
+            document.getElementById('scanPlaceInput').value = ""; 
+            
+            tagIds = []; 
+            document.getElementById('scanList').innerHTML = ""; 
+            document.getElementById('count').innerText = "0";
+            loadAndShowList(); 
+            switchView('list');
         } catch (e) { alert("失敗"); }
     }
 
