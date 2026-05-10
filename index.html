@@ -533,26 +533,27 @@
         if (tagIds.length === 0) return alert("未スキャン");
         
         const selectedUser = document.getElementById('scanUserSelect').value;
-        // ★追加：入力された場所を取得
-        const placeInput = document.getElementById('scanPlaceInput').value; 
+        // ★ここを追加：入力された場所の値を取得する
+        const placeInput = document.getElementById('scanPlaceInput') ? document.getElementById('scanPlaceInput').value : "";
         
         if (status === '貸出中' && !selectedUser) return alert("社員を選択してください");
         
         document.getElementById('status').innerText = "送信中...";
         try {
+            // ★修正：placeName を "現場" から placeInput に変更
             await callGas({ 
                 action: "update", 
                 sId: session.sId, 
                 tagIds: tagIds, 
                 status: status, 
                 userName: selectedUser || "返却済", 
-                // ★修正："現場" 固定ではなく入力された値（空なら空のまま）を送る
                 placeName: placeInput 
             });
+
+            alert("更新完了");
             
-            alert("更新完了"); 
-            // ★追加：送信が終わったら場所の入力欄を空にする
-            document.getElementById('scanPlaceInput').value = ""; 
+            // ★追加：送信が終わったら入力欄を空にする
+            if(document.getElementById('scanPlaceInput')) document.getElementById('scanPlaceInput').value = "";
             
             tagIds = []; 
             document.getElementById('scanList').innerHTML = ""; 
