@@ -435,12 +435,21 @@
         if(!tbd) return;
         tbd.innerHTML = "<tr><td colspan='4' class='text-center py-4 text-muted'>読み込み中...</td></tr>";
         try {
-            const res = await callGas({ action: "fetchData", sId: session.sId });
-            const data = await res.json();
+            // ★修正：稼働状況と名簿データを「同時（並列）」に取得して時間を半分にする
+            const pData = callGas({ action: "fetchData", sId: session.sId }).then(res => res.json());
+            const pTools = (cachedTools === null) 
+                            ? callGas({ action: "fetchToolMaster", sId: session.sId }).then(res => res.json()) 
+                            : Promise.resolve(cachedTools);
+
+            // 2つの通信が同時に終わるのを待つ
+            const [data, tools] = await Promise.all([pData, pTools]);
+            
+            cachedTools = tools; // 記憶を更新
             masterData = data.slice(1);
+            
             updateFilterOptions(masterData);
             renderTable(masterData);
-        } catch (e) { tbd.innerHTML = "取得失敗"; }
+        } catch (e) { tbd.innerHTML = "<tr><td colspan='4' class='text-center'>取得失敗</td></tr>"; }
     }
 
 
