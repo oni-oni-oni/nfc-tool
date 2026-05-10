@@ -1,5 +1,5 @@
 const MASTER_SHEET_ID = '1_z9SacqBnkhj-VeD5EQhJHiAj38l2H-M60j_ikgGYbA';
-
+//
 function doPost(e) {
   let params;
   try {
@@ -43,33 +43,34 @@ function doPost(e) {
 
     // --- 2. 稼働状況の更新 (画像に基づく列のズレ修正) ---
     if (action === "update") {
-      const sheet = ss.getSheets()[0];
+      const historySheet = ss.getSheets()[0]; // 稼働状況シート
+      const data = historySheet.getDataRange().getValues();
+      const tagsToUpdate = params.tagIds || []; // スキャンされたタグIDの配列
       const now = new Date();
       
-      // 道具名簿から、タグIDに紐づく「道具名」を検索するための準備
-      const toolData = ss.getSheetByName("道具名簿").getDataRange().getValues();
-      const toolMap = {};
-      for (let i = 1; i < toolData.length; i++) {
-        if(toolData[i][1]) toolMap[toolData[i][1].toString().trim().toUpperCase()] = toolData[i][0];
-      }
-
-      params.tagIds.forEach(id => {
-        const tagUpper = id.toString().trim().toUpperCase();
-        const toolName = toolMap[tagUpper] || "不明な道具"; // 名簿になければ不明とする
-
-        // 画像のレイアウトに厳格に合わせる
-        // [A:No, B:道具, C:場所, D:ユーザー, E:状況, F:管理タグID, G:更新日]
-        sheet.appendRow([
-          "",                  // A: No
-          toolName,            // B: 道具
-          params.placeName || "", // C: 場所 (index.htmlから送られる値)
-          params.userName,     // D: ユーザー
-          params.status,       // E: 状況 (貸出中/保管中)
-          id,                  // F: 管理タグID
-          now                  // G: 更新日
-        ]);
+      // スキャンされたタグの数だけ順番に処理する
+      tagsToUpdate.forEach(tagId => {
+        let targetRow = -1;
+        const targetTag = tagId.toString().trim().toUpperCase();
+        
+        // 稼働状況シートの中から、同じタグID（F列）を持つ行を探す
+        for (let i = 1; i < data.length; i++) {
+          if (data[i][5] && data[i][5].toString().trim().toUpperCase() === targetTag) {
+            targetRow = i + 1; // 一致した行番号を記憶
+            break;
+          }
+        }
+        
+        // 見つかった場合のみ、その行のデータを上書きする
+        if (targetRow > 0) {
+          historySheet.getRange(targetRow, 3).setValue(params.placeName); // C列：場所
+          historySheet.getRange(targetRow, 4).setValue(params.userName);  // D列：社員名
+          historySheet.getRange(targetRow, 5).setValue(params.status);    // E列：状況（貸出中/返却済など）
+          historySheet.getRange(targetRow, 7).setValue(now);              // G列：更新日
+        }
       });
-      return createJsonResponse({ success: true, message: "更新完了" });
+
+      return createJsonResponse({ success: true, message: "状態を更新しました" });
     }
 
     // --- 3. 道具の登録・上書き ---
