@@ -133,8 +133,11 @@
                         <div class="table-responsive">
                             <table class="table table-hover align-middle">
                                 <thead class="table-light">
-
-
+                                    <tr style="font-size: 0.8rem;">
+                                        <th style="width: 55px;">写真</th>
+                                        <th>道具名 / ID</th>
+                                        <th class="text-end">操作</th>
+                                    </tr>
                                 </thead>
                                 <tbody id="toolMasterTbd" style="font-size: 0.85rem;"></tbody>
                             </table>
@@ -284,32 +287,31 @@
     async function loadToolMaster() {
         const tbd = document.getElementById('toolMasterTbd');
         if(!tbd) return;
-        tbd.innerHTML = "<tr><td colspan='4' class='text-center small'>読み込み中...</td></tr>";
+        // ★修正：colspanを3に変更
+        tbd.innerHTML = "<tr><td colspan='3' class='text-center small'>読み込み中...</td></tr>";
         try {
             const res = await callGas({ action: "fetchToolMaster", sId: session.sId });
             const tools = await res.json();
             
-            // データが空の場合の処理を追加
             if (!tools || tools.length === 0) {
-                tbd.innerHTML = "<tr><td colspan='4' class='text-center'>登録データがありません</td></tr>";
+                // ★修正：colspanを3に変更
+                tbd.innerHTML = "<tr><td colspan='3' class='text-center'>登録データがありません</td></tr>";
                 return;
             }
 
-                tbd.innerHTML = tools.map(t => {
-                // 画像がある場合は表示、ない場合は「なし」
+            tbd.innerHTML = tools.map(t => {
                 const displayUrl = getDisplayImageUrl(t[2]);
-                const imgTag = displayUrl ? `<img src="${displayUrl}" style="width:45px; height:45px; object-fit:cover; border-radius:4px; cursor:pointer;" onclick="window.open('${t[2] || ''}')">` : `<span class="text-muted small">なし</span>`;
+                const imgTag = displayUrl ? `<img src="${displayUrl}" style="width:45px; height:45px; object-fit:cover; border-radius:4px; cursor:pointer;" onclick="window.open('${t[2]}')">` : `<span class="text-muted small">なし</span>`;
                 
                 return `
                 <tr>
                     <td class="text-center">${imgTag}</td> 
                     <td>
-                        <div class="fw-bold">${t[0] || ""}</div>
-                        <div class="text-muted small">${t[3] || ""}</div>
+                        <div class="fw-bold" style="font-size: 0.9rem; line-height: 1.2;">${t[0] || ""}</div>
+                        <div class="text-secondary" style="font-size: 0.7rem; margin-top: 2px;">ID: ${t[1] || ""}</div>
                     </td>
-                    <td class="text-secondary small">${t[1] || ""}</td>
                     <td class="text-end">
-                        <div class="d-flex gap-1">
+                        <div class="d-flex gap-1 justify-content-end">
                             <button class="btn btn-outline-primary btn-sm" 
                                 onclick="editTool('${t[0]}', '${t[1]}', '${t[2] || ''}', '${t[3] || ''}')">編集</button>
                             <button class="btn btn-outline-danger btn-sm" 
@@ -320,7 +322,8 @@
             }).join('');
         } catch (e) { 
             console.error(e);
-            tbd.innerHTML = "<tr><td colspan='4' class='text-center'>取得失敗</td></tr>"; 
+            // ★修正：colspanを3に変更
+            tbd.innerHTML = "<tr><td colspan='3' class='text-center'>取得失敗</td></tr>"; 
         }
     }
 
