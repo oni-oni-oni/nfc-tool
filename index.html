@@ -133,19 +133,13 @@
             headers: { "Content-Type": "text/plain;charset=utf-8" },
             body: JSON.stringify(payload)
         });
-        const data = await res.json();
-        if (data.message === "セッションが切れました。再ログインしてください。") {
-            alert(data.message);
-            location.reload();
-            return null;
-        }
-        return data;
+        return await res.json();
     }
 
     function getDisplayImageUrl(url) {
         if (!url || !url.includes("id=")) return "";
         const id = url.split("id=")[1].split("&")[0];
-        return `https://lh3.googleusercontent.com/d/${id}`;
+        return `https://lh3.googleusercontent.com/d/$${id}`;
     }
 
     async function handleLogin() {
@@ -175,6 +169,7 @@
             tagIds = [];
             document.getElementById('scanList').innerHTML = "";
             document.getElementById('count').innerText = "0";
+            document.getElementById('status').innerText = "待機中...";
         }
         if (view === 'list') loadAndShowList();
         if (view === 'register') { resetRegisterForm(); loadToolMaster(); }
@@ -183,9 +178,8 @@
 
     async function loadStaffList() {
         const tbd = document.getElementById('staffListTbd');
-        const res = await callGas({ action: "fetchStaff", sId: session.sId });
-        if (!res) return;
-        const staff = res;
+        const staff = await callGas({ action: "fetchStaff", sId: session.sId });
+        if (!staff) return;
         const sel = document.getElementById('scanUserSelect');
         sel.innerHTML = '<option value="">選択してください...</option>' + 
                         staff.map(s => `<option value="${s[2]}">${s[2]} (${s[1] || 'なし'})</option>`).join('');
@@ -196,6 +190,8 @@
         const dept = document.getElementById('staffDept').value, name = document.getElementById('staffName').value;
         if(!dept || !name) return alert("入力不足");
         await callGas({ action: "addMyStaff", sId: session.sId, dept, name, cCode: session.comp });
+        document.getElementById('staffDept').value = "";
+        document.getElementById('staffName').value = "";
         loadStaffList();
     }
 
@@ -207,60 +203,194 @@
 
     async function loadToolMaster() {
         const tbd = document.getElementById('toolMasterTbd');
+        tbd.innerHTML = "<tr><td colspan='3' class='text-center'>読み込み中...</td></tr>";
         const tools = await callGas({ action: "fetchToolMaster", sId: session.sId });
-        if (!tools) return;
+        if (!tools || tools.length === 0) {
+            tbd.innerHTML = "<tr><td colspan='3' class='text-center'>データがありません</td></tr>";
+            return;
+        }
         tbd.innerHTML = tools.map(t => `
             <tr>
-                <td><img src="${getDisplayImageUrl(t[2])}" style="width:40px;height:40px;object-fit:cover;"></td>
-                <td><div class="fw-bold">${t[0]}</div><small>${t[1]}</small></td>
-                <td class="text-end"><button class="btn btn-sm btn-outline-primary" onclick="editTool('${t[0]}','${t[1]}','${t[2]}','${t[3]}')">編集</button></td>
+                <td><img src="${getDisplayImageUrl(t[2])}" style="width:40px;height:40px;object-fit:cover;border-radius:4px;"></td>
+                <td><div class="fw-bold">${t[0]}</div><small class="text-secondary">${t[1]}</small></td>
+                <td class="text-end">
+                    <button class="btn btn-sm btn-outline-primary" onclick="editTool('${t[0]}','${t[1]}','${t[2]}','${t[3]}')">編集</button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteToolFull('${t[0]}','${t[1]}')">削除</button>
+                </td>
             </tr>
         `).join('');
     }
 
-    async function registerTool() {
-        const name = document.getElementById('regName').value, tag = document.getElementById('regTag').value;
+    async function deleteToolFull(name, tag) {
+        if (!confirm(`道具「${name}」を削除しますか？`)) return;
+        await callGas({ action: "deleteToolFull", sId: session.sId, tagId: tag });
+        cachedTools = null;
+        loadToolMaster();
+    }
+
+    function editTool(name, tag, imageUrl, remarks) {
+        isEditMode = true;
+        currentEditImageUrl = imageUrl;
+        document.getElementById('regName').value = name;
+        document.getElementById('regTag').value = tag;
+        document.getElementById('regRemarks').value = remarks;
         const btn = document.getElementById('btnReg');
+        btn.innerText = "上書き保存";
+        btn.classList.replace('btn-success', 'btn-warning');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    async function registerTool() {
+        const name = document.getElementById('regName').value, tag = document.getElementById('regTag').value, remarks = document.getElementById('regRemarks').value;
+        const imgFile = document.getElementById('regImage').files[0];
+        const btn = document.getElementById('btnReg');
+        if(!name || !tag) return alert("道具名とタグIDは必須です");
         btn.disabled = true;
-        const data = await callGas({ action: "addToolMaster", sId: session.sId, name, tag, folderId: session.folderId });
-        if (data.success) { alert("完了"); loadToolMaster(); resetRegisterForm(); }
+        btn.innerText = "処理中...";
+        
+        let base64Image = "";
+        if (imgFile) {
+            base64Image = await new Promise((resolve) => {
+                const reader = new FileReader(); reader.readAsDataURL(imgFile);
+                reader.onload = (e) => {
+                    const img = new Image(); img.src = e.target.result;
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const scale = 800 / img.width;
+                        canvas.width = 800; canvas.height = img.height * scale;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        resolve(canvas.toDataURL('image/jpeg', 0.7));
+                    };
+                };
+            });
+        }
+        
+        const data = await callGas({ action: "addToolMaster", sId: session.sId, name, tag, remarks, imageBlob: base64Image, existingUrl: isEditMode ? currentEditImageUrl : "", folderId: session.folderId });
+        if (data.success) { 
+            alert("完了"); 
+            cachedTools = null;
+            loadToolMaster(); 
+            resetRegisterForm(); 
+        }
         btn.disabled = false;
     }
 
     function resetRegisterForm() {
         isEditMode = false;
+        currentEditImageUrl = "";
         document.getElementById('regName').value = "";
         document.getElementById('regTag').value = "";
+        document.getElementById('regRemarks').value = "";
+        document.getElementById('regImage').value = "";
+        const btn = document.getElementById('btnReg');
+        btn.innerText = "名簿に登録";
+        btn.classList.replace('btn-warning', 'btn-success');
     }
 
     async function startNFC() {
-        const ndef = new NDEFReader(); await ndef.scan();
-        ndef.onreading = event => {
-            const id = event.serialNumber;
-            if (!tagIds.includes(id)) {
-                tagIds.push(id);
-                const li = document.createElement('li');
-                li.className = "list-group-item bg-dark text-white py-1 small";
-                li.innerText = id;
-                document.getElementById('scanList').prepend(li);
-                document.getElementById('count').innerText = tagIds.length;
-            }
-        };
+        if (!('NDEFReader' in window)) return alert("NFC非対応です");
+        try {
+            const ndef = new NDEFReader(); await ndef.scan();
+            ndef.onreading = event => {
+                const id = event.serialNumber;
+                if (!tagIds.includes(id)) {
+                    tagIds.push(id);
+                    const li = document.createElement('li');
+                    li.className = "list-group-item bg-dark text-white py-1 small";
+                    li.innerText = id;
+                    document.getElementById('scanList').prepend(li);
+                    document.getElementById('count').innerText = tagIds.length;
+                    if (navigator.vibrate) navigator.vibrate(100);
+                }
+            };
+        } catch (e) { alert("NFC起動エラー"); }
+    }
+
+    async function scanSingleTag() {
+        if (!('NDEFReader' in window)) return alert("NFC非対応です");
+        try {
+            const ndef = new NDEFReader(); await ndef.scan();
+            ndef.onreading = event => { 
+                document.getElementById('regTag').value = event.serialNumber; 
+                if (navigator.vibrate) navigator.vibrate(100); 
+            };
+        } catch (e) { alert("NFC起動エラー"); }
     }
 
     async function sendToGas(status) {
         if (tagIds.length === 0) return alert("未スキャン");
         const user = document.getElementById('scanUserSelect').value;
         const place = document.getElementById('scanPlaceInput').value;
+        if (status === '貸出中' && !user) return alert("社員を選択してください");
+        
+        document.getElementById('status').innerText = "送信中...";
         await callGas({ action: "update", sId: session.sId, tagIds, status, userName: user || "返却済", placeName: place });
-        alert("更新完了"); switchView('list');
+        alert("更新完了"); 
+        
+        document.getElementById('scanPlaceInput').value = "";
+        tagIds = [];
+        document.getElementById('scanList').innerHTML = "";
+        document.getElementById('count').innerText = "0";
+        document.getElementById('status').innerText = "待機中...";
+        switchView('list');
     }
 
     async function loadAndShowList() {
-        const res = await callGas({ action: "fetchData", sId: session.sId });
-        if (!res) return;
         const tbd = document.getElementById('listTbd');
-        tbd.innerHTML = res.slice(1).map(r => `<tr><td class="fw-bold">${r[1]}</td><td>${r[2]}<br><small>${r[3]}</small></td><td><span class="status-badge bg-${r[4]}">${r[4]}</span></td></tr>`).join('');
+        tbd.innerHTML = "<tr><td colspan='4' class='text-center'>読み込み中...</td></tr>";
+        
+        const pData = callGas({ action: "fetchData", sId: session.sId });
+        const pTools = (cachedTools === null) ? callGas({ action: "fetchToolMaster", sId: session.sId }) : Promise.resolve(cachedTools);
+        
+        const [data, tools] = await Promise.all([pData, pTools]);
+        if (!data || !tools) return;
+        
+        cachedTools = tools;
+        masterData = data.slice(1);
+        
+        const masterMap = {};
+        cachedTools.forEach(t => { masterMap[t[1]] = { url: t[2], name: t[0] }; });
+
+        updateFilterOptions();
+        renderTable(masterData, masterMap);
+    }
+
+    function renderTable(data, masterMap) {
+        const tbd = document.getElementById('listTbd');
+        if (!masterMap && cachedTools) {
+            masterMap = {};
+            cachedTools.forEach(t => { masterMap[t[1]] = { url: t[2], name: t[0] }; });
+        }
+        
+        tbd.innerHTML = data.map(r => {
+            const tagId = r[5];
+            const masterInfo = (masterMap && masterMap[tagId]) || {};
+            const rawUrl = masterInfo.url;
+            const toolName = masterInfo.name || r[1];
+            const displayUrl = getDisplayImageUrl(rawUrl);
+            const imgHtml = displayUrl ? `<img src="${displayUrl}" style="width:40px;height:40px;object-fit:cover;border-radius:6px;">` : `<div class="bg-light text-muted d-flex align-items-center justify-content-center" style="width:40px;height:40px;border-radius:6px;font-size:0.5rem;">なし</div>`;
+            const date = r[6] ? new Date(r[6]) : null;
+            const dateStr = date ? `${date.getMonth()+1}/${date.getDate()} ${date.getHours()}:${('0'+date.getMinutes()).slice(-2)}` : "-";
+            
+            return `<tr><td class="text-center">${imgHtml}</td><td class="fw-bold">${toolName}</td><td><div class="small">${r[2]}</div><div class="text-secondary" style="font-size:0.7rem">${r[3]}</div></td><td><div class="mb-1"><span class="status-badge bg-${r[4]}">${r[4]}</span></div><div class="text-secondary" style="font-size:0.7rem">${dateStr}</div></td></tr>`;
+        }).join('');
+    }
+
+    function updateFilterOptions() {
+        const make = (id, idx, label) => {
+            const target = document.getElementById(id);
+            if(!target) return;
+            const vals = [...new Set(masterData.map(r => r[idx]))].filter(v => v).sort();
+            target.innerHTML = `<option value="">${label}:すべて</option>` + vals.map(v => `<option value="${v}">${v}</option>`).join('');
+        };
+        make('fItem', 1, '道具'); make('fPlace', 2, '場所'); make('fUser', 3, '人'); make('fStatus', 4, '状況');
+    }
+
+    function filterList() {
+        const fi = document.getElementById('fItem').value, fp = document.getElementById('fPlace').value, fu = document.getElementById('fUser').value, fs = document.getElementById('fStatus').value;
+        const filtered = masterData.filter(r => (!fi || r[1]==fi) && (!fp || r[2]==fp) && (!fu || r[3]==fu) && (!fs || r[4]==fs));
+        renderTable(filtered);
     }
 
     window.onload = () => switchView('login');

@@ -9,12 +9,11 @@ function doPost(e) {
   }
 
   const action = params.action;
-  const sId = params.sId; // スマホから送られてくるトークン
 
   try {
     const ss = SpreadsheetApp.openById(MASTER_SHEET_ID);
 
-    // --- 1. ログイン処理（認証不要） ---
+    // --- 1. ログイン処理 ---
     if (action === "login") {
       const loginSheet = ss.getSheets()[0];
       const data = loginSheet.getDataRange().getValues();
@@ -29,19 +28,9 @@ function doPost(e) {
             folderId = rawFolder.split("folders/")[1].split("?")[0].split("/")[0];
           }
 
-          // セキュリティトークンの発行
-          const token = Utilities.getUuid();
-          const expire = new Date();
-          expire.setHours(expire.getHours() + 12); // 12時間有効
-          
-          const sessionSheet = ss.getSheetByName("セッション管理");
-          if (sessionSheet) {
-            sessionSheet.appendRow([token, data[i][0], expire]);
-          }
-
           return createJsonResponse({
             success: true,
-            sId: token,
+            sId: data[i][0], // シンプルにIDをそのまま返す
             cCode: data[i][0],
             compName: data[i][2],
             folderId: folderId
@@ -51,14 +40,7 @@ function doPost(e) {
       return createJsonResponse({ success: false, message: "IDまたはパスワードが違います" });
     }
 
-    // --- 2. セキュリティ見張り番（ログイン以外の全操作をチェック） ---
-    if (!validateToken(sId)) {
-      return createJsonResponse({ success: false, message: "セッションが切れました。再ログインしてください。" });
-    }
-
-    // --- 3. 認証済みユーザーのみが実行できる処理 ---
-    
-    // 貸出・返却の更新
+    // --- 2. 各種処理（認証なしでスッと通す） ---
     if (action === "update") {
       const sheet = ss.getSheets()[0];
       const masterSheet = ss.getSheetByName("道具名簿");
@@ -79,7 +61,6 @@ function doPost(e) {
       return createJsonResponse({ success: true });
     }
 
-    // 道具の新規登録・編集
     if (action === "addToolMaster") {
       const sheet = ss.getSheetByName("道具名簿");
       const data = sheet.getDataRange().getValues();
@@ -108,7 +89,6 @@ function doPost(e) {
       return createJsonResponse({ success: true });
     }
 
-    // 道具の削除
     if (action === "deleteToolFull") {
       const masterSheet = ss.getSheetByName("道具名簿");
       const data = masterSheet.getDataRange().getValues();
@@ -120,14 +100,12 @@ function doPost(e) {
       return createJsonResponse({ success: true });
     }
 
-    // 社員登録
     if (action === "addMyStaff") {
       const sheet = ss.getSheetByName("社員名簿");
       sheet.appendRow([params.cCode, params.dept, params.name]);
       return createJsonResponse({ success: true });
     }
 
-    // 社員削除
     if (action === "deleteStaff") {
       const sheet = ss.getSheetByName("社員名簿");
       const d = sheet.getDataRange().getValues();
@@ -139,7 +117,6 @@ function doPost(e) {
       return createJsonResponse({ success: true });
     }
 
-    // 各種データ取得
     if (action === "fetchToolMaster") {
       const data = ss.getSheetByName("道具名簿").getDataRange().getValues();
       return createJsonResponse(data.slice(1));
@@ -156,22 +133,6 @@ function doPost(e) {
   } catch (e) {
     return createJsonResponse({ success: false, message: "Error: " + e.message });
   }
-}
-
-// 見張り番：トークンが有効か確認
-function validateToken(sId) {
-  if (!sId) return false;
-  const ss = SpreadsheetApp.openById(MASTER_SHEET_ID);
-  const sessionSheet = ss.getSheetByName("セッション管理");
-  if (!sessionSheet) return false;
-  const data = sessionSheet.getDataRange().getValues();
-  const now = new Date();
-  for (let i = data.length - 1; i >= 1; i--) {
-    if (data[i][0] === sId) {
-      return new Date(data[i][2]) > now;
-    }
-  }
-  return false;
 }
 
 function createJsonResponse(obj) {
