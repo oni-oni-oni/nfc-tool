@@ -453,23 +453,19 @@
     }
 
 
-    async function renderTable(data) {
+    function renderTable(data) {
         const tbd = document.getElementById('listTbd');
         if(!tbd) return;
-
-        // ★修正：箱が空っぽの時だけGASと通信し、それ以外は記憶を使う
-        if (cachedTools === null) {
-            const toolRes = await callGas({ action: "fetchToolMaster", sId: session.sId });
-            cachedTools = await toolRes.json();
-        }
-
-        // 道具名から画像URLを引くためのマップを作成
+        
+        // すでに取得済みの記憶（cachedTools）から画像URLのマップを作る
         const imageMap = {};
-        cachedTools.forEach(t => { imageMap[t[0]] = t[2]; });
+        if (cachedTools) {
+            cachedTools.forEach(t => { imageMap[t[0]] = t[2]; });
+        }
 
         tbd.innerHTML = data.map(r => {
             const toolName = r[1];
-            const rawUrl = imageMap[toolName]; // 名簿から画像を取得
+            const rawUrl = imageMap[toolName]; 
             const displayUrl = getDisplayImageUrl(rawUrl);
             
             // 画像HTMLの生成
