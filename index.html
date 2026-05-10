@@ -231,20 +231,33 @@
         } catch (e) { msg.innerText = "接続エラー"; }
     }
 
-    function switchView(v) {
+    function switchView(view) {
+        // すべてのセクションを非表示にする
         document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active-view'));
-        const target = document.getElementById('view-' + v);
-        if(target) target.classList.add('active-view');
-        document.getElementById('body').className = (v === 'scan' ? 'dark-mode' : '');
+        // 選択されたセクションを表示する
+        document.getElementById(view).classList.add('active-view');
 
-        // 登録画面以外に切り替えたときに、編集モードや入力内容をクリアする
-        if (v !== 'register') {
-            resetRegisterForm();
+        // ★スキャン画面に切り替わった時のリセット処理を追加
+        if (view === 'scan') {
+            // 場所の入力欄を空にする
+            const placeInput = document.getElementById('scanPlaceInput');
+            if (placeInput) placeInput.value = "";
+            
+            // スキャン済みのリストと個数表示をリセット
+            tagIds = []; 
+            const scanList = document.getElementById('scanList');
+            if (scanList) scanList.innerHTML = "";
+            const count = document.getElementById('count');
+            if (count) count.innerText = "0";
+            
+            // ステータス表示も初期状態に戻す
+            const statusText = document.getElementById('status');
+            if (statusText) statusText.innerText = "スキャン待機中...";
         }
 
-        if (v === 'list') loadAndShowList();
-        if (v === 'staff') loadStaffList();
-        if (v === 'register') loadToolMaster();
+        // 既存の処理
+        if (view === 'list') loadAndShowList();
+        if (view === 'register') resetRegisterForm();
     }
 
     async function loadStaffList() {
