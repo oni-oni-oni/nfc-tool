@@ -454,11 +454,9 @@
             cachedTools = await toolRes.json();
         }
 
-    
-        // 道具名から画像URLを引くためのマップを作成（高速化のため）
-        const toolRes = await callGas({ action: "fetchToolMaster", sId: session.sId });
-        const tools = await toolRes.json();
+        // 道具名から画像URLを引くためのマップを作成
         const imageMap = {};
+        cachedTools.forEach(t => { imageMap[t[0]] = t[2]; });
         tools.forEach(t => { imageMap[t[0]] = t[2]; }); // 道具名をキー、URLを値にする
 
 
