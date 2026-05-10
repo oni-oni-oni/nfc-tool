@@ -387,6 +387,7 @@
                 cachedTools = null; // ★追加：名簿が変わったので記憶をリセット
                 resetRegisterForm();
                 loadToolMaster();
+                loadAndShowList();
             } else {
                 // ★失敗した原因を画面に出します
                 alert("登録失敗の原因: " + data.message);
