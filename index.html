@@ -163,7 +163,7 @@
     
     let tagIds = [];
     let masterData = [];
-    let cachedTools = null;
+
     async function callGas(payload) {
         return await fetch(GAS_URL, {
             method: "POST",
@@ -384,7 +384,6 @@
             
             if (data.success) {
                 alert(isEditMode ? "修正しました" : "登録しました");
-                cachedTools = null; // ★追加：名簿が変わったので記憶をリセット
                 resetRegisterForm();
                 loadToolMaster();
             } else {
@@ -447,16 +446,11 @@
     async function renderTable(data) {
     const tbd = document.getElementById('listTbd');
     if(!tbd) return;
-
-    // ★修正：箱が空っぽの時だけGASと通信し、それ以外は記憶を使う
-        if (cachedTools === null) {
-            const toolRes = await callGas({ action: "fetchToolMaster", sId: session.sId });
-            cachedTools = await toolRes.json();
-        }
-
-        // 道具名から画像URLを引くためのマップを作成
+    
+        // 道具名から画像URLを引くためのマップを作成（高速化のため）
+        const toolRes = await callGas({ action: "fetchToolMaster", sId: session.sId });
+        const tools = await toolRes.json();
         const imageMap = {};
-        cachedTools.forEach(t => { imageMap[t[0]] = t[2]; });
         tools.forEach(t => { imageMap[t[0]] = t[2]; }); // 道具名をキー、URLを値にする
 
 
@@ -535,7 +529,6 @@
         try {
             await callGas({ action: "deleteToolFull", sId: session.sId, tagId: tag });
             alert("削除しました");
-            cachedTools = null; // ★追加：名簿が変わったので記憶をリセット
             loadToolMaster();
         } catch (e) { alert("削除エラー"); }
     }
