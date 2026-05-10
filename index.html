@@ -503,46 +503,8 @@
             </tr>`;
         }).join('');
     }
-    function addToolMaster(e) {
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var masterSheet = ss.getSheetByName("道具名簿");
-    var logSheet = ss.getSheetByName("稼働状況"); // 履歴シート
+
     
-    var masterData = masterSheet.getDataRange().getValues();
-    var tagId = e.tag;
-    var newName = e.name;
-    var targetRow = -1;
-
-    // 1. 道具名簿（マスター）を更新
-    for (var i = 1; i < masterData.length; i++) {
-        if (masterData[i][1] == tagId) {
-        targetRow = i + 1;
-        break;
-        }
-    }
-
-    // 画像処理（略：既存のロジック）
-    var imageUrl = e.existingUrl || "";
-    // ... (画像保存の処理) ...
-
-    if (targetRow > 0) {
-        // マスターの情報を上書き
-        masterSheet.getRange(targetRow, 1, 1, 4).setValues([[newName, tagId, imageUrl, e.remarks]]);
-        
-        // ★ここがポイント：稼働状況シート（履歴）の中の古い名前もすべて更新する
-        var logData = logSheet.getDataRange().getValues();
-        for (var j = 1; j < logData.length; j++) {
-        if (logData[j][5] == tagId) { // F列（インデックス5）がタグID
-            logSheet.getRange(j + 1, 2).setValue(newName); // B列（インデックス1+1）の名前を書き換え
-        }
-        }
-    } else {
-        // 新規登録
-        masterSheet.appendRow([newName, tagId, imageUrl, e.remarks]);
-    }
-    return { success: true };
-    }
-
     function updateFilterOptions(data) {
         const make = (id, idx, label) => {
             const target = document.getElementById(id);
