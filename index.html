@@ -232,17 +232,17 @@
     }
 
     function switchView(view) {
-        // 1. すべてのセクションを非表示にする
+        // すべてのセクションを非表示にする
         document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active-view'));
         
-        // 2. 選択されたセクションを表示する
-        // ★修正：HTMLのID（view-scanなど）に合わせて「'view-' + view」で探すように変更！
+        // ★修正：エラーの犯人はここでした！
+        // 実際のHTMLのID（view-scanなど）に合わせて、「'view-' + view」という名前で探すように修正します。
         const target = document.getElementById('view-' + view);
         if (target) {
             target.classList.add('active-view');
         }
 
-        // 3. スキャン画面に切り替わった時のリセット処理
+        // スキャン画面に切り替わった時のリセット処理
         if (view === 'scan') {
             const placeInput = document.getElementById('scanPlaceInput');
             if (placeInput) placeInput.value = "";
@@ -257,10 +257,11 @@
             if (statusText) statusText.innerText = "スキャン待機中...";
         }
 
-        // 4. 各画面を開いた時に「最新データを読み込む」処理
+        // 既存の処理
         if (view === 'list') loadAndShowList();
         if (view === 'register') resetRegisterForm();
-        // ★これを追加しておくと、社員タブを開くたびにスプレッドシートの最新情報を読み込みます！
+        
+        // ★追加：これを書いておけば、社員タブを開くたびにスプレッドシートの手動追加分を即座に読み込みます！
         if (view === 'staff') loadStaffList(); 
     }
     async function loadStaffList() {
