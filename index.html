@@ -120,7 +120,7 @@
 
                         <div class="mb-3">
                             <label class="form-label small fw-bold">写真</label>
-                            <input type="file" id="regImage" class="form-control" accept="image/*" capture="environment">
+                            <input type="file" id="regImage" class="form-control" accept="image/*">
                         </div>
 
                         <button class="btn btn-success btn-lg w-100 py-3" id="btnReg" onclick="registerTool()">名簿に登録</button>
@@ -175,7 +175,7 @@
         if (!url) return "";
         if (url.includes("id=")) {
             const id = url.split("id=")[1].split("&")[0];
-            // ★変更: Googleが外部サイトでの画像表示用に用意している別サーバーのURLを使います
+            // ★変更: スマホのセキュリティ制限を回避できる、最も確実なHTTPS画像リンク
             return `https://lh3.googleusercontent.com/d/${id}`;
         }
         return url;
