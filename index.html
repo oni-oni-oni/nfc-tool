@@ -234,24 +234,23 @@
     function switchView(view) {
         // すべてのセクションを非表示にする
         document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active-view'));
-        
-        // ★修正：HTMLのID（view-scanなど）に合わせて「'view-' + view」で探すように変更
-        const target = document.getElementById('view-' + view);
-        if (target) {
-            target.classList.add('active-view');
-        }
+        // 選択されたセクションを表示する
+        document.getElementById(view).classList.add('active-view');
 
-        // ★スキャン画面に切り替わった時のリセット処理
+        // ★スキャン画面に切り替わった時のリセット処理を追加
         if (view === 'scan') {
+            // 場所の入力欄を空にする
             const placeInput = document.getElementById('scanPlaceInput');
             if (placeInput) placeInput.value = "";
             
+            // スキャン済みのリストと個数表示をリセット
             tagIds = []; 
             const scanList = document.getElementById('scanList');
             if (scanList) scanList.innerHTML = "";
             const count = document.getElementById('count');
             if (count) count.innerText = "0";
             
+            // ステータス表示も初期状態に戻す
             const statusText = document.getElementById('status');
             if (statusText) statusText.innerText = "スキャン待機中...";
         }
