@@ -67,12 +67,9 @@
         <div class="table-responsive bg-white rounded shadow-sm">
             <table class="table table-hover align-middle mb-0">
                     <thead class="table-light">
-                        <tr>
-                            <th style="width: 50px;">写真</th>
-                            <th>道具名</th>
-                            <th>場所/人</th>
-                            <th>状況/日付</th>
-                        </tr>
+
+                        
+
                     </thead>
                 <tbody id="listTbd" style="font-size: 0.85rem;"></tbody>
             </table>
@@ -90,7 +87,7 @@
         </div>
         <div class="table-responsive bg-white rounded shadow-sm">
             <table class="table table-sm table-hover align-middle mb-0">
-                <thead class="table-light"><tr><th>部署</th><th>名前</th><th>操作</th></tr></thead>
+                <thead class="table-light"></thead>
                 <tbody id="staffListTbd" style="font-size: 0.85rem;"></tbody>
             </table>
         </div>
@@ -136,12 +133,8 @@
                         <div class="table-responsive">
                             <table class="table table-hover align-middle">
                                 <thead class="table-light">
-                                    <tr style="font-size: 0.8rem;">
-                                        <th>写真</th>
-                                        <th>道具詳細</th>
-                                        <th>タグID</th>
-                                        <th>操作</th>
-                                    </tr>
+
+
                                 </thead>
                                 <tbody id="toolMasterTbd" style="font-size: 0.85rem;"></tbody>
                             </table>
@@ -182,7 +175,8 @@
         if (!url) return "";
         if (url.includes("id=")) {
             const id = url.split("id=")[1].split("&")[0];
-            return `https://drive.google.com/thumbnail?id=${id}&sz=w400`;
+            // ★変更: Googleが外部サイトでの画像表示用に用意している別サーバーのURLを使います
+            return `https://lh3.googleusercontent.com/d/${id}`;
         }
         return url;
     }
@@ -466,7 +460,7 @@
             const imgHtml = displayUrl ? 
                 `<img src="${displayUrl}" style="width:40px; height:40px; object-fit:cover; border-radius:6px; cursor:pointer;" onclick="window.open('${rawUrl}')">` : 
                 `<div class="bg-light text-muted d-flex align-items-center justify-content-center" style="width:40px; height:40px; border-radius:6px; font-size:0.5rem;">なし</div>`;
-                
+
             // 日付フォーマット
             const date = r[6] ? new Date(r[6]) : null;
             const dateStr = date ? `${date.getMonth()+1}/${date.getDate()} ${date.getHours()}:${('0'+date.getMinutes()).slice(-2)}` : "-";
