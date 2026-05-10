@@ -76,8 +76,9 @@ function doPost(e) {
     if (action === "addToolMaster") {
       const sh = ss.getSheetByName("道具名簿");
       const historySheet = ss.getSheets()[0]; // 稼働状況（一番左のシート）
-      let imageUrl = params.existingUrl || "";
       
+      // 1. 画像保存処理
+      let imageUrl = params.existingUrl || "";
       if (params.imageBlob && params.folderId) {
         const folder = DriveApp.getFolderById(params.folderId);
         const blob = Utilities.newBlob(Utilities.base64Decode(params.imageBlob.split(",")[1]), "image/jpeg", "tool_" + params.tag + ".jpg");
@@ -86,27 +87,39 @@ function doPost(e) {
         imageUrl = "https://drive.google.com/uc?export=view&id=" + file.getId();
       }
 
+      // 2. 名簿（マスター）を検索して更新または追加
       const data = sh.getDataRange().getValues();
       let rowIndex = -1;
       const targetTag = params.tag.toString().trim().toUpperCase();
+      
       for (let i = 1; i < data.length; i++) {
-        if (data[i][1] && data[i][1].toString().trim().toUpperCase() === targetTag) { rowIndex = i + 1; break; }
+        if (data[i][1] && data[i][1].toString().trim().toUpperCase() === targetTag) { 
+          rowIndex = i + 1;
+          break; 
+        }
       }
 
       const now = new Date();
       if (rowIndex > 0) {
-        // 【上書きの場合】名簿を更新するだけ
-        sh.getRange(rowIndex, 1).setValue(params.name);
-        if (imageUrl) sh.getRange(rowIndex, 3).setValue(imageUrl);
-        sh.getRange(rowIndex, 4).setValue(params.remarks);
-        return createJsonResponse({ success: true, message: "名簿を更新しました" });
+        // 【上書きの場合】名簿の情報を更新
+        sh.getRange(rowIndex, 1, 1, 4).setValues([[params.name, params.tag, imageUrl, params.remarks]]);
+        
+        // ★ここがポイント：稼働状況シート（履歴）の中の古い名前もすべて更新する
+        const logData = historySheet.getDataRange().getValues();
+        for (let j = 1; j < logData.length; j++) {
+          // F列（インデックス5）がタグIDと一致するか確認
+          if (logData[j][5] && logData[j][5].toString().trim().toUpperCase() === targetTag) {
+            historySheet.getRange(j + 1, 2).setValue(params.name); // B列の名前を書き換え
+          }
+        }
+        return createJsonResponse({ success: true, message: "名簿と履歴を更新しました" });
+        
       } else {
         // 【新規登録の場合】
         // 1. 道具名簿に追加
         sh.appendRow([params.name, params.tag, imageUrl, params.remarks]);
         
-        // 2. 稼働状況（履歴）にも「保管中」として自動追加！
-        // レイアウト: [A:No, B:道具, C:場所, D:ユーザー, E:状況, F:タグID, G:更新日]
+        // 2. 稼働状況（履歴）にも「保管中」として自動追加
         historySheet.appendRow([
           "",               // A: No
           params.name,      // B: 道具名
@@ -116,7 +129,6 @@ function doPost(e) {
           params.tag,       // F: 管理タグID
           now               // G: 更新日
         ]);
-        
         return createJsonResponse({ success: true, message: "名簿と稼働状況に登録しました" });
       }
     }
@@ -179,42 +191,3 @@ function fixPermission() {
   DriveApp.createFile("test.txt", "test");
 }
 
-function addToolMaster(e) {
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var masterSheet = ss.getSheetByName("道具名簿");
-    var logSheet = ss.getSheetByName("稼働状況"); // 履歴シート
-    
-    var masterData = masterSheet.getDataRange().getValues();
-    var tagId = e.tag;
-    var newName = e.name;
-    var targetRow = -1;
-
-    // 1. 道具名簿（マスター）を更新
-    for (var i = 1; i < masterData.length; i++) {
-        if (masterData[i][1] == tagId) {
-        targetRow = i + 1;
-        break;
-        }
-    }
-
-    // 画像処理（略：既存のロジック）
-    var imageUrl = e.existingUrl || "";
-    // ... (画像保存の処理) ...
-
-    if (targetRow > 0) {
-        // マスターの情報を上書き
-        masterSheet.getRange(targetRow, 1, 1, 4).setValues([[newName, tagId, imageUrl, e.remarks]]);
-        
-        // ★ここがポイント：稼働状況シート（履歴）の中の古い名前もすべて更新する
-        var logData = logSheet.getDataRange().getValues();
-        for (var j = 1; j < logData.length; j++) {
-        if (logData[j][5] == tagId) { // F列（インデックス5）がタグID
-            logSheet.getRange(j + 1, 2).setValue(newName); // B列（インデックス1+1）の名前を書き換え
-        }
-        }
-    } else {
-        // 新規登録
-        masterSheet.appendRow([newName, tagId, imageUrl, e.remarks]);
-    }
-    return { success: true };
-    }
