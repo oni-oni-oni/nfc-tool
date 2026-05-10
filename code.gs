@@ -181,26 +181,14 @@ function doPost(e) {
   } catch (e) {
     return createJsonResponse({ success: false, message: "Error: " + e.message });
   }
-
-
 }
 
 // ★最重要：GitHub(外部サイト)から通信エラー(CORS)を出さずに結果を返すための共通関数
 function createJsonResponse(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
-
-  }
+}
 function fixPermission() {
   DriveApp.createFile("test.txt", "test");
-
 }
 
-
-
-function doGet(e) {
-  return HtmlService.createHtmlOutputFromFile('index')
-      .setTitle('道具管理 Pro')
-      .addMetaTag('viewport', 'width=device-width, initial-scale=1');
-
-}
