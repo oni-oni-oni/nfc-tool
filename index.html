@@ -289,7 +289,7 @@
         const dept = document.getElementById('staffDept').value, name = document.getElementById('staffName').value;
         if(!dept || !name) return alert("入力不足");
         try {
-            await callGas({ action: "addMyStaff", sId: session.sId, dept, name, cCode: session.cCode });
+            await callGas({ action: "addMyStaff", sId: session.sId, dept, name, cCode: session.comp });
             alert("社員を登録しました");
             document.getElementById('staffDept').value = ""; document.getElementById('staffName').value = "";
             loadStaffList();
