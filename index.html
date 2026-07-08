@@ -460,7 +460,6 @@
         }
             };
         } catch (e) { 
-            alert("NFCエラー"); 
             logNfcError(e); // ★ここを修正
         }
     }
@@ -598,7 +597,6 @@
                 if (navigator.vibrate) navigator.vibrate(100); 
             };
         } catch (e) { 
-            alert("NFCエラー"); 
             logNfcError(e);
         }
     }
