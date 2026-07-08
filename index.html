@@ -459,7 +459,10 @@
             if (navigator.vibrate) navigator.vibrate(100);
         }
             };
-        } catch (e) { alert("NFCエラー"); }
+        } catch (e) { 
+            alert("NFCエラー"); 
+            logNfcError(e); // ★ここを修正
+        }
     }
 
     async function loadAndShowList() {
@@ -594,7 +597,10 @@
                 if(target) target.value = event.serialNumber; 
                 if (navigator.vibrate) navigator.vibrate(100); 
             };
-        } catch (e) { alert("NFCエラー"); }
+        } catch (e) { 
+            alert("NFCエラー"); 
+            logNfcError(e);
+        }
     }
     async function deleteToolFull(name, tag) {
         if (!confirm(`道具「${name}」を削除しますか？`)) return;
@@ -604,6 +610,10 @@
             cachedTools = null; // ★追加：名簿が変わったので記憶をリセット
             loadToolMaster();
         } catch (e) { alert("削除エラー"); }
+    }
+    async function logNfcError(e) {
+        await callGas({ action: "logError", name: e.name, message: e.message });
+        alert("NFCエラーが発生しました。ログに記録しました。\n種類: " + e.name);
     }
 </script>
 </body>

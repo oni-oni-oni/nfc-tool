@@ -12,6 +12,13 @@ function doPost(e) {
   const sId = params.sId;
 
   try {
+
+    // ★追加：エラーをシートに記録する機能
+    if (action === "logError") {
+      const sheet = ss.getSheetByName("NFCエラーログ");
+      if (sheet) sheet.appendRow([new Date(), params.name, params.message]);
+      return createJsonResponse({ success: true });
+    }
     // --- 1. ログイン & フォルダID自動抽出 ---
     if (action === "login") {
       const ss = SpreadsheetApp.openById(MASTER_SHEET_ID);
