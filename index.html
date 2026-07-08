@@ -4,6 +4,8 @@
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>道具管理 Pro</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- ★追加：QRコード読み取り用のライブラリを読み込み -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
     <style>
         body { background-color: #f8f9fa; padding-bottom: 70px; font-family: sans-serif; }
         .dark-mode { background-color: #121212; color: white; }
@@ -37,18 +39,26 @@
             <h5 id="displayComp" class="text-secondary small mb-3">🏢 読み込み中...</h5>
             <div class="text-start mb-3">
                 <label class="small fw-bold text-secondary">利用者を選択</label>
-                <select id="scanUserSelect" class="form-select mb-2">
-                    </select>
+                <select id="scanUserSelect" class="form-select mb-2"></select>
                 <div class="input-group mb-3">
                     <span class="input-group-text" style="font-size: 0.8rem;">場所</span>
                     <input type="text" id="scanPlaceInput" class="form-control" placeholder="現場名・倉庫など">
                 </div>
-
-
-
             </div>
+            
             <h4 class="fw-bold mb-3">📡 一括スキャン</h4>
-            <button class="btn btn-success btn-lg w-100 py-4 my-3 shadow" onclick="startNFC()">スキャン開始</button>
+            
+            <!-- ★追加：QRカメラの映像が出る枠 -->
+            <div id="qr-reader" style="width: 100%; display: none; margin-bottom: 10px; border-radius: 8px; overflow: hidden; background: #000;"></div>
+            <div class="text-center mb-3">
+                <button id="stopQrBtn" class="btn btn-sm btn-danger" style="display: none;" onclick="stopQR()">■ カメラ停止</button>
+            </div>
+
+            <div class="row g-2 my-3">
+                <div class="col-6"><button class="btn btn-success btn-lg w-100 py-3 shadow" style="font-size: 1rem;" onclick="startNFC()">NFCスキャン</button></div>
+                <div class="col-6"><button class="btn btn-outline-success btn-lg w-100 py-3 shadow bg-white" style="font-size: 1rem;" onclick="startQR()">📷 QRスキャン</button></div>
+            </div>
+            
             <div class="text-start small mb-3">
                 読み取り済み: <span id="count" class="fw-bold text-info">0</span>
                 <ul id="scanList" class="list-group list-group-flush mt-2 rounded" style="max-height: 150px; overflow-y: auto;"></ul>
@@ -74,11 +84,7 @@
         </div>
         <div class="table-responsive bg-white rounded shadow-sm">
             <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light">
-
-                        
-
-                    </thead>
+                <thead class="table-light"></thead>
                 <tbody id="listTbd" style="font-size: 0.85rem;"></tbody>
             </table>
         </div>
@@ -107,17 +113,23 @@
                 <div class="col-lg-5 col-md-12 mb-4">
                     <div class="card card-custom border-0 shadow-sm">
                         <h5 class="fw-bold mb-3">➕ 道具の新規登録</h5>
-                        
                         <div class="mb-3">
                             <label class="form-label small fw-bold">道具名</label>
                             <input type="text" id="regName" class="form-control" placeholder="例：インパクトレンチA">
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label small fw-bold">タグID</label>
+                            <label class="form-label small fw-bold">タグID / QR</label>
                             <div class="input-group">
                                 <input type="text" id="regTag" class="form-control bg-light" readonly>
-                                <button class="btn btn-secondary btn-sm" onclick="scanSingleTag()">スキャン</button>
+                                <!-- ★追加：NFCとQRのボタンを分ける -->
+                                <button class="btn btn-success btn-sm" onclick="scanSingleTag()">NFC</button>
+                                <button class="btn btn-outline-success btn-sm" onclick="scanSingleQR()">QR</button>
+                            </div>
+                            <!-- ★追加：登録用のQRカメラ枠 -->
+                            <div id="qr-reader-reg" style="width: 100%; display: none; margin-top: 10px; border-radius: 8px; overflow: hidden; background: #000;"></div>
+                            <div class="text-center mt-2">
+                                <button id="stopQrRegBtn" class="btn btn-sm btn-danger" style="display: none;" onclick="stopRegQR()">■ カメラ停止</button>
                             </div>
                         </div>
 
@@ -125,12 +137,10 @@
                             <label class="form-label small fw-bold">備考 (項目1)</label>
                             <textarea id="regRemarks" class="form-control" rows="2" placeholder="購入日や型番など"></textarea>
                         </div>
-
                         <div class="mb-3">
                             <label class="form-label small fw-bold">写真</label>
                             <input type="file" id="regImage" class="form-control" accept="image/*">
                         </div>
-
                         <button class="btn btn-success btn-lg w-100 py-3" id="btnReg" onclick="registerTool()">名簿に登録</button>
                     </div>
                 </div>
@@ -155,6 +165,7 @@
             </div>
         </div>
     </div>
+
 <nav class="nav-fixed" id="mainNav" style="display:none;">
     <a href="javascript:void(0)" class="text-decoration-none text-center small text-dark" onclick="switchView('scan')">📡<br>スキャン</a>
     <a href="javascript:void(0)" class="text-decoration-none text-center small text-dark" onclick="switchView('list')">📋<br>一覧</a>
@@ -166,12 +177,17 @@
 <script>
     const GAS_URL = "https://script.google.com/macros/s/AKfycbz_aAZvAV3kRKlCrhtczqHj4CbdtKUDykMqN5RxZfk2-CHQ392VYcl7yD9wvtlgykL7YA/exec";
     
-    // 最初は空っぽの状態で準備しておきます
     let session = { sId: "", comp: "", cCode: "", folderId: "" };
-    
     let tagIds = [];
     let masterData = [];
     let cachedTools = null;
+    let isEditMode = false; 
+    let currentEditImageUrl = "";
+
+    // ★追加：QRコードリーダー用の変数
+    let html5QrCode = null;
+    let html5QrCodeReg = null;
+
     async function callGas(payload) {
         return await fetch(GAS_URL, {
             method: "POST",
@@ -179,34 +195,26 @@
             body: JSON.stringify(payload)
         });
     }
-    let isEditMode = false; // 現在が編集モードかどうか
-    let currentEditImageUrl = ""; // 編集中の既存画像URL
- 
+
     function getDisplayImageUrl(url) {
         if (!url) return "";
         if (url.includes("id=")) {
             const id = url.split("id=")[1].split("&")[0];
-            // ★変更: スマホのセキュリティ制限を回避できる、最も確実なHTTPS画像リンク
             return `https://lh3.googleusercontent.com/d/${id}`;
         }
         return url;
     }
-    // 編集ボタンを押した時の処理
+
     function editTool(name, tag, imageUrl, remarks) {
         isEditMode = true;
         currentEditImageUrl = imageUrl;
-        
-        // フォームに値をセット
         document.getElementById('regName').value = name;
         document.getElementById('regTag').value = tag;
         document.getElementById('regRemarks').value = remarks;
         
-        // ボタンの見た目を変える
         const btn = document.getElementById('btnReg');
         btn.innerText = "🛠 上書き保存する";
         btn.classList.replace('btn-success', 'btn-warning');
-        
-        // 画面上部（フォーム）へスクロール
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
@@ -220,9 +228,7 @@
             const res = await callGas({ action: "login", id, pw });
             const data = await res.json();
             if (data.success) {
-                // ★修正2: ログインに成功して「data」が届いたここで、初めて中身をセットします
                 session = { sId: data.sId, comp: data.compName, cCode: data.cCode, folderId: data.folderId };
-                
                 document.getElementById('displayComp').innerText = "🏢 " + session.comp;
                 document.getElementById('mainNav').style.display = "flex";
                 loadStaffList();
@@ -231,42 +237,34 @@
         } catch (e) { msg.innerText = "接続エラー"; }
     }
 
-
     function switchView(view) {
-        // すべてのセクションを非表示にする
+        // ★追加：画面を切り替える時は必ずカメラを停止する
+        stopQR();
+        stopRegQR();
+
         document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active-view'));
-        
-        // 実際のHTMLのIDに合わせて、「'view-' + view」で探す
         const target = document.getElementById('view-' + view);
         if (target) {
             target.classList.add('active-view');
         }
 
-        // スキャン画面に切り替わった時のリセット処理
         if (view === 'scan') {
             const placeInput = document.getElementById('scanPlaceInput');
             if (placeInput) placeInput.value = "";
-            
             tagIds = []; 
             const scanList = document.getElementById('scanList');
             if (scanList) scanList.innerHTML = "";
             const count = document.getElementById('count');
             if (count) count.innerText = "0";
-            
             const statusText = document.getElementById('status');
             if (statusText) statusText.innerText = "スキャン待機中...";
         }
 
-        // 既存の処理
         if (view === 'list') loadAndShowList();
-        
-        // ★ここを修正しました！
-        // 登録画面を開いた時に「フォームのリセット」と一緒に「名簿の読み込み(loadToolMaster)」も実行します
         if (view === 'register') {
             resetRegisterForm();
             loadToolMaster(); 
         }
-        
         if (view === 'staff') loadStaffList(); 
     }
 
@@ -314,18 +312,15 @@
         } catch (e) { alert("削除失敗"); }
     }
 
-    // ★道具一覧の表示（画像サムネイル対応）
     async function loadToolMaster() {
         const tbd = document.getElementById('toolMasterTbd');
         if(!tbd) return;
-        // ★修正：colspanを3に変更
         tbd.innerHTML = "<tr><td colspan='3' class='text-center small'>読み込み中...</td></tr>";
         try {
             const res = await callGas({ action: "fetchToolMaster", sId: session.sId });
             const tools = await res.json();
             
             if (!tools || tools.length === 0) {
-                // ★修正：colspanを3に変更
                 tbd.innerHTML = "<tr><td colspan='3' class='text-center'>登録データがありません</td></tr>";
                 return;
             }
@@ -352,12 +347,10 @@
                 </tr>`;
             }).join('');
         } catch (e) { 
-            console.error(e);
-            // ★修正：colspanを3に変更
             tbd.innerHTML = "<tr><td colspan='3' class='text-center'>取得失敗</td></tr>"; 
         }
     }
- 
+
     function compressImage(file) {
         return new Promise((resolve) => {
             const reader = new FileReader();
@@ -379,7 +372,6 @@
         });
     }
 
-    // 登録・編集ボタンの実行処理（エラー表示機能付き）
     async function registerTool() {
         const name = document.getElementById('regName').value;
         const tag = document.getElementById('regTag').value;
@@ -396,7 +388,6 @@
         if (imgFile) {
             base64Image = await compressImage(imgFile);
         }
-        //テストコード@@alert("現在のフォルダIDは: " + session.folderId);
         try {
             const res = await callGas({ 
                 action: "addToolMaster", 
@@ -410,17 +401,15 @@
                 existingUrl: isEditMode ? currentEditImageUrl : "" 
             });
 
-            // ★ここがデバッグの肝です：GASからの返事を解析します
             const data = await res.json();
             
             if (data.success) {
                 alert(isEditMode ? "修正しました" : "登録しました");
-                cachedTools = null; // ★追加：名簿が変わったので記憶をリセット
+                cachedTools = null; 
                 resetRegisterForm();
                 loadToolMaster();
                 loadAndShowList();
             } else {
-                // ★失敗した原因を画面に出します
                 alert("登録失敗の原因: " + data.message);
             }
         } catch (e) { 
@@ -428,7 +417,7 @@
         }
         btn.disabled = false;
     }
-    // フォームを真っさらに戻す関数
+
     function resetRegisterForm() {
         isEditMode = false;
         currentEditImageUrl = "";
@@ -441,42 +430,140 @@
         btn.classList.replace('btn-warning', 'btn-success');
     }
 
-
+    // ==========================================
+    // NFCスキャン処理（★ここにデバッグコードを残しています）
+    // ==========================================
     async function startNFC() {
         if (!('NDEFReader' in window)) return alert("NFC非対応ブラウザです");
         try {
             const ndef = new NDEFReader(); await ndef.scan();
-            document.getElementById('status').innerText = "待機中...";
+            document.getElementById('status').innerText = "NFCスキャン待機中...";
             ndef.onreading = event => {
                 const id = event.serialNumber;
-                if (!tagIds.includes(id)) {
-                    tagIds.push(id);
-                    const li = document.createElement('li');
-                    li.className = "list-group-item bg-dark text-white border-secondary py-1 small";
-                    li.innerText = id;
-                    document.getElementById('scanList').prepend(li);
-                    document.getElementById('count').innerText = tagIds.length;
-                    if (navigator.vibrate) navigator.vibrate(100);
-                }
+                addScannedTag(id);
             };
-        } catch (e) { alert("NFCエラー"); }
+        } catch (e) { 
+            // ★デバッグ表示：エラーの種類とメッセージを出す
+            alert("NFC起動エラー\n種類: " + e.name + "\n詳細: " + e.message); 
+            logNfcError(e); // ★ここを修正
+        }
     }
+
+    // ==========================================
+    // QRコード 一括スキャン処理
+    // ==========================================
+    async function startQR() {
+        document.getElementById('status').innerText = "カメラ起動中...";
+        document.getElementById('qr-reader').style.display = "block";
+        document.getElementById('stopQrBtn').style.display = "inline-block";
+        
+        if (!html5QrCode) {
+            html5QrCode = new Html5Qrcode("qr-reader");
+        }
+        
+        try {
+            await html5QrCode.start(
+                { facingMode: "environment" }, // 背面カメラ
+                { fps: 10, qrbox: { width: 250, height: 250 } },
+                (decodedText, decodedResult) => {
+                    addScannedTag(decodedText);
+                },
+                (errorMessage) => { }
+            );
+            document.getElementById('status').innerText = "QRスキャン待機中...";
+        } catch (err) {
+            alert("カメラの起動に失敗しました。\niPhoneの場合はSafariをご利用ください。");
+            document.getElementById('status').innerText = "カメラ起動エラー";
+        }
+    }
+
+    async function stopQR() {
+        if (html5QrCode && html5QrCode.isScanning) {
+            await html5QrCode.stop();
+            document.getElementById('qr-reader').style.display = "none";
+            document.getElementById('stopQrBtn').style.display = "none";
+            document.getElementById('status').innerText = "待機中...";
+        }
+    }
+
+    function addScannedTag(id) {
+        if (!tagIds.includes(id)) {
+            tagIds.push(id);
+            const li = document.createElement('li');
+            li.className = "list-group-item bg-dark text-white border-secondary py-1 small";
+            li.innerText = id;
+            document.getElementById('scanList').prepend(li);
+            document.getElementById('count').innerText = tagIds.length;
+            if (navigator.vibrate) navigator.vibrate(100);
+        }
+    }
+
+    // ==========================================
+    // 単発スキャン（新規登録用）（★ここにもデバッグコードを残しています）
+    // ==========================================
+    async function scanSingleTag() {
+        if (!('NDEFReader' in window)) return alert("NFC非対応ブラウザです");
+        try {
+            const ndef = new NDEFReader(); await ndef.scan();
+            ndef.onreading = event => { 
+                const target = document.getElementById('regTag');
+                if(target) target.value = event.serialNumber; 
+                if (navigator.vibrate) navigator.vibrate(100); 
+            };
+        } catch (e) { 
+            // ★デバッグ表示：エラーの種類とメッセージを出す
+            alert("NFC読込エラー\n種類: " + e.name + "\n詳細: " + e.message); 
+            logNfcError(e); // ★ここを修正
+        }
+    }
+
+    async function scanSingleQR() {
+        document.getElementById('qr-reader-reg').style.display = "block";
+        document.getElementById('stopQrRegBtn').style.display = "inline-block";
+        
+        if (!html5QrCodeReg) {
+            html5QrCodeReg = new Html5Qrcode("qr-reader-reg");
+        }
+        
+        try {
+            await html5QrCodeReg.start(
+                { facingMode: "environment" }, 
+                { fps: 10, qrbox: { width: 250, height: 250 } },
+                (decodedText, decodedResult) => {
+                    document.getElementById('regTag').value = decodedText;
+                    if (navigator.vibrate) navigator.vibrate(100);
+                    stopRegQR(); 
+                },
+                (errorMessage) => { }
+            );
+        } catch (err) {
+            alert("カメラの起動に失敗しました。");
+        }
+    }
+
+    async function stopRegQR() {
+        if (html5QrCodeReg && html5QrCodeReg.isScanning) {
+            await html5QrCodeReg.stop();
+            document.getElementById('qr-reader-reg').style.display = "none";
+            document.getElementById('stopQrRegBtn').style.display = "none";
+        }
+    }
+
+    // ==========================================
 
     async function loadAndShowList() {
         const tbd = document.getElementById('listTbd');
         if(!tbd) return;
         tbd.innerHTML = "<tr><td colspan='4' class='text-center py-4 text-muted'>読み込み中...</td></tr>";
         try {
-            // ★修正：稼働状況と名簿データを「同時（並列）」に取得して時間を半分にする
             const pData = callGas({ action: "fetchData", sId: session.sId }).then(res => res.json());
             const pTools = (cachedTools === null) 
                             ? callGas({ action: "fetchToolMaster", sId: session.sId }).then(res => res.json()) 
                             : Promise.resolve(cachedTools);
 
-            // 2つの通信が同時に終わるのを待つ
             const [data, tools] = await Promise.all([pData, pTools]);
             
-            cachedTools = tools; // 記憶を更新
+            cachedTools = tools; 
             masterData = data.slice(1);
             
             updateFilterOptions(masterData);
@@ -484,13 +571,10 @@
         } catch (e) { tbd.innerHTML = "<tr><td colspan='4' class='text-center'>取得失敗</td></tr>"; }
     }
 
-
-// ★修正：通信処理がなくなり、純粋に画面を描くだけの爆速処理になりました
     function renderTable(data) {
         const tbd = document.getElementById('listTbd');
         if(!tbd) return;
         
-        // ★修正1：タグID（t[1]）をキーにして、画像URLと「最新の道具名」をセットで記憶する
         const masterMap = {};
         if (cachedTools) {
             cachedTools.forEach(t => { 
@@ -499,21 +583,16 @@
         }
 
         tbd.innerHTML = data.map(r => {
-            const tagId = r[5]; // ★修正2：F列（0から数えて5番目）のタグIDを取得
-            
-            // マスターデータからタグIDをキーにして情報を引き出す
+            const tagId = r[5]; 
             const masterInfo = masterMap[tagId] || {};
-            const rawUrl = masterInfo.url; // タグIDに紐づく画像URL
-            const toolName = masterInfo.name || r[1]; // マスターに最新の名前があればそれを使用し、なければ履歴データ(B列)を使う
-            
+            const rawUrl = masterInfo.url; 
+            const toolName = masterInfo.name || r[1]; 
             const displayUrl = getDisplayImageUrl(rawUrl);
             
-            // 画像HTMLの生成
             const imgHtml = displayUrl ? 
                 `<img src="${displayUrl}" style="width:40px; height:40px; object-fit:cover; border-radius:6px; cursor:pointer;" onclick="window.open('${rawUrl}')">` : 
                 `<div class="bg-light text-muted d-flex align-items-center justify-content-center" style="width:40px; height:40px; border-radius:6px; font-size:0.5rem;">なし</div>`;
 
-            // 日付フォーマット
             const date = r[6] ? new Date(r[6]) : null;
             const dateStr = date ? `${date.getMonth()+1}/${date.getDate()} ${date.getHours()}:${('0'+date.getMinutes()).slice(-2)}` : "-";
             
@@ -534,7 +613,6 @@
             </tr>`;
         }).join('');
     }
-
     
     function updateFilterOptions(data) {
         const make = (id, idx, label) => {
@@ -556,14 +634,12 @@
         if (tagIds.length === 0) return alert("未スキャン");
         
         const selectedUser = document.getElementById('scanUserSelect').value;
-        // ★ここを追加：入力された場所の値を取得する
         const placeInput = document.getElementById('scanPlaceInput') ? document.getElementById('scanPlaceInput').value : "";
         
         if (status === '貸出中' && !selectedUser) return alert("社員を選択してください");
         
         document.getElementById('status').innerText = "送信中...";
         try {
-            // ★修正：placeName を "現場" から placeInput に変更
             await callGas({ 
                 action: "update", 
                 sId: session.sId, 
@@ -574,8 +650,8 @@
             });
 
             alert("更新完了");
-            
-            // ★追加：送信が終わったら入力欄を空にする
+            stopQR(); // ★送信が終わったらカメラを止める
+
             if(document.getElementById('scanPlaceInput')) document.getElementById('scanPlaceInput').value = "";
             
             tagIds = []; 
@@ -586,24 +662,21 @@
         } catch (e) { alert("失敗"); }
     }
 
-    async function scanSingleTag() {
-        try {
-            const ndef = new NDEFReader(); await ndef.scan();
-            ndef.onreading = event => { 
-                const target = document.getElementById('regTag');
-                if(target) target.value = event.serialNumber; 
-                if (navigator.vibrate) navigator.vibrate(100); 
-            };
-        } catch (e) { alert("NFCエラー"); }
-    }
     async function deleteToolFull(name, tag) {
         if (!confirm(`道具「${name}」を削除しますか？`)) return;
         try {
             await callGas({ action: "deleteToolFull", sId: session.sId, tagId: tag });
             alert("削除しました");
-            cachedTools = null; // ★追加：名簿が変わったので記憶をリセット
+            cachedTools = null; 
             loadToolMaster();
         } catch (e) { alert("削除エラー"); }
+    }
+    // ★新機能：NFCエラーをスプレッドシートに飛ばす
+    async function logNfcError(e) {
+        // スプレッドシートにログを記録
+        await callGas({ action: "logError", name: e.name, message: e.message });
+        // 画面にも一応エラーが出たことを知らせる
+        alert("NFCエラーが発生しました。ログに記録しました。\n" + e.name);
     }
 </script>
 </body>

@@ -177,7 +177,12 @@ function doPost(e) {
       const data = ss.getSheetByName("社員名簿").getDataRange().getValues();
       return createJsonResponse(data.slice(1));
     }
-
+    // ★追加：エラーログを記録する機能
+    if (action === "logError") {
+      const sheet = ss.getSheetByName("NFCエラーログ");
+      sheet.appendRow([new Date(), params.name, params.message]);
+      return createJsonResponse({ success: true });
+    }
   } catch (e) {
     return createJsonResponse({ success: false, message: "Error: " + e.message });
   }
