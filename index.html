@@ -177,6 +177,7 @@
     <a href="javascript:void(0)" class="text-decoration-none text-center small text-dark" onclick="switchView('staff')">👤<br>社員</a>
     <a href="javascript:void(0)" class="text-decoration-none text-center small text-dark" onclick="switchView('register')">➕<br>登録</a>
     <a href="javascript:void(0)" class="text-decoration-none text-center small text-danger" onclick="location.reload()">🚪<br>終了</a>
+    <a href="javascript:void(0)" class="text-decoration-none text-center small text-danger" onclick="logout()">🚪<br>終了</a>
 </nav>
  
 <script>
@@ -234,6 +235,10 @@
             const data = await res.json();
             if (data.success) {
                 session = { sId: data.sId, comp: data.compName, cCode: data.cCode, folderId: data.folderId };
+
+                localStorage.setItem('appSession', JSON.stringify(session));
+                localStorage.setItem('loginTime', Date.now());
+
                 document.getElementById('displayComp').innerText = "🏢 " + session.comp;
                 document.getElementById('mainNav').style.display = "flex";
                 loadStaffList();
@@ -690,6 +695,44 @@
         await callGas({ action: "logError", name: e.name, message: e.message });
         alert("NFCエラーが発生しました。ログに記録しました。\n種類: " + e.name);
     }
+
+    // ★追加：明示的にログアウトする関数
+    function logout() {
+        localStorage.removeItem('appSession');
+        localStorage.removeItem('loginTime');
+        location.reload();
+    }
+
+    // ★追加：ページを開いた時に自動ログインできるかチェックする
+    window.onload = () => {
+        const savedSession = localStorage.getItem('appSession');
+        const loginTime = localStorage.getItem('loginTime');
+
+        // もし記憶があれば、何分経過しているか計算
+        if (savedSession && loginTime) {
+            const now = Date.now();
+            const diffMinutes = (now - parseInt(loginTime)) / (1000 * 60);
+
+            if (diffMinutes <= 10) {
+                // 10分以内なら自動ログイン完了（ログイン画面をスキップ）
+                session = JSON.parse(savedSession);
+                
+                // ※もし「アプリを開くたびに10分のタイマーをリセット（延長）したい」場合は、下の1行の // を消してください
+                // localStorage.setItem('loginTime', now); 
+
+                document.getElementById('displayComp').innerText = "🏢 " + session.comp;
+                document.getElementById('mainNav').style.display = "flex";
+                loadStaffList();
+                switchView('scan');
+                return;
+            } else {
+                // 10分過ぎていたら記憶を消去して、通常のログイン画面へ
+                localStorage.removeItem('appSession');
+                localStorage.removeItem('loginTime');
+            }
+        }
+    };
+
 </script>
 </body>
 </html>
